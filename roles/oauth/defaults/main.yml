@@ -1,0 +1,19 @@
+---
+oauth_ldap_namespace: "openshift-config"
+
+oauth_ldap_secret: "ldap-secret"
+
+oauth_ldap_bindpassword: "setme"
+oauth_ldap_bindDN: "setme"
+
+oauth_ldap_cert_configmap: "ca-config-map"
+
+oauth_ldap_cacert_file: "cert.txt"
+
+oauth_ldap_identityprovider_name: "ldapidp"
+oauth_ldap_attribute_id: dn
+oauth_ldap_attribute_email: "mail"
+oauth_ldap_attribute_name: "cn"
+oauth_ldap_attribute_preferredUsername: "uid"
+oauth_ldap_insecure: false
+oauth_ldap_url: "ldap://ldap.example.com/ou=users,dc=acme,dc=com?uid"

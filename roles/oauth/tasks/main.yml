@@ -188,29 +188,66 @@
         state: absent
   when: auth == "HTPasswd"
 
-- name: Authentication via AD
+- name: "Authentication via AD"
   block:
+    - name: "Create ldap secret"
+      k8s:
+        state: present
+        api_version: v1
+        kind: Secret
+        namespace: "{{ oauth_ldap_namespace }}"
+        name: "{{ oauth_ldap_secret }}"
+        merge_type: 
+          - strategic-merge
+          - merge     
+        definition:
+          type: Opaque
+          data:
+            bindPassword: "{{ oauth_ldap_bindpassword }}"
 
-#    - name: Build HTPASSWD file
-#      htpasswd:
-#        state: present
-#        path: "{{ role_path }}/files/htpassword"
-#        name: "{{ item.value.username }}"
-#        password: "redhat1"
-#      with_dict: "{{ groups_and_users }}"
-#    
-#    - name: Create htpassword secret
-#      k8s:
-#        state: present
-#        api_version: v1
-#        kind: Secret
-#        namespace: openshift-config
-#        name: htpasswd
-#        merge_type: 
-#          - strategic-merge
-#          - merge     
-#        definition:
-#          type: Opaque
-#          data:
-#            htpasswd: "{{ lookup('file', role_path + '/files/htpassword') | b64encode }}"
+    - name: "Create a config map"
+      k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: ConfigMap
+          metadata:
+            name: "{{ oauth_ldap_cert_configmap }}"
+            namespace: "{{ oauth_ldap_namespace }}"
+          data:
+            ca.crt: {{ lookup('file', '{{ oauth_ldap_cacert_file }}') | to_json }}
+
+    - name: "Create the oAuth configuration for Ldap"
+      k8s:
+        state: present
+        api_version: config.openshift.io/v1
+        kind: OAuth
+        name: cluster
+        merge_type:
+          - strategic-merge
+          - merge
+        definition:
+          spec:
+            identityProviders:
+              - name: "{{ oauth_ldap_identityprovider_name }}"
+                mappingMethod: claim
+                type: LDAP 
+                ldap:
+                  attributes:
+                    id:
+                    - "{{ oauth_ldap_attribute_id }}"
+                    email:
+                    - "{{ oauth_ldap_attribute_email }}"
+                    name:
+                    - "{{ oauth_ldap_attribute_name }}"
+                    preferredUsername:
+                    - "{{ oauth_ldap_attribute_preferredUsername }}"
+                  bindDN: "{{ oauth_ldap_bindDN }}"
+                  bindPassword: 
+                    name: "{{ oauth_ldap_secret }}" 
+                  ca: 
+                    name: "{{ oauth_ldap_cert_configmap }}"
+                  insecure: "{{ oauth_ldap_insecure }}" 
+                  url: "{{ oauth_ldap_url }}"
+
   when: auth == "AD"
