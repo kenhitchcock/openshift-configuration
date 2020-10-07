@@ -1,0 +1,4 @@
+---
+monitoring_namespace: openshift-monitoring
+
+monitoring-configmap-name: cluster-monitoring-config

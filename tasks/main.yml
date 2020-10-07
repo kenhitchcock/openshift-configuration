@@ -1,0 +1,51 @@
+---
+# tasks file for monitoring
+
+- name: Create / set Namespace for cluster monitoring
+  k8s:
+    state: present
+    api_version: v1
+    kind: Namespace
+    name: "{{ monitoring_namespace }}"
+
+- name: Create cluster monitoring ConfigMap
+  k8s:
+    state: present
+    namespace: "{{ monitoring_namespace }}"
+    definition:
+      api_version: v1
+      kind: ConfigMap
+      metadata:
+        name: "{{ monitoring-configmap-name }}"
+      data:
+        config.yaml: |
+          alertmanagerMain:
+            nodeSelector:
+              node-role.kubernetes.io/infra: ""
+          prometheusK8s:
+            nodeSelector:
+              node-role.kubernetes.io/infra: ""
+          prometheusOperator:
+            nodeSelector:
+              node-role.kubernetes.io/infra: ""
+          grafana:
+            nodeSelector:
+              node-role.kubernetes.io/infra: ""
+          k8sPrometheusAdapter:
+            nodeSelector:
+              node-role.kubernetes.io/infra: ""
+          kubeStateMetrics:
+            nodeSelector:
+              node-role.kubernetes.io/infra: ""
+          telemeterClient:
+            nodeSelector:
+              node-role.kubernetes.io/infra: ""
+          openshiftStateMetrics:
+            nodeSelector:
+              node-role.kubernetes.io/infra: ""
+          thanosQuerier:
+            nodeSelector:
+              node-role.kubernetes.io/infra: ""
+
+
+   
