@@ -1,6 +1,6 @@
-ad_sync_server_url: "ldap://localhost:636"
-ad_sync_service_account:
-ad_sync_password: 
+ad_sync_server_url: "setme"
+ad_sync_service_account: "setme"
+ad_sync_password: "setme"
 ad_sync_group_base_dn: "OU=Open Shift,OU=Groups,DC=office,DC=local"
 ad_sync_user_base_dn: "ou=IT Staff,dc=office,dc=local"
 ad_sync_user_userNameAttributes: "sAMAccountName"
