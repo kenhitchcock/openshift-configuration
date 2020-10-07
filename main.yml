@@ -1,0 +1,24 @@
+---
+# tasks file for monitoring
+
+- name: Create / set Namespace for cluster monitoring
+  k8s:
+    state: present
+    api_version: v1
+    kind: Namespace
+    name: openshift-monitoring
+
+- name: Create cluster monitoring ConfigMap
+  k8s:
+    state: present
+    namespace: cluster-monitoring
+    definition:
+      api_version: v1
+      kind: ConfigMap
+      metadata:
+        name: cluster-monitoring-config
+      data:
+        config.yml: |
+          *insert configmap here*
+
+   
