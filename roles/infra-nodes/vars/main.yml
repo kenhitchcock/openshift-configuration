@@ -1,0 +1,26 @@
+---
+# Machine set variables per cloud provider.
+azure_machinesets:
+  - name: infra
+    az: 1
+  - name: infra
+    az: 2
+  - name: infra
+    az: 3
+
+aws_machinesets:
+  - name: infra
+    az: a
+  - name: infra
+    az: b
+  - name: infra
+    az: c
+
+# Local fact for the full cluster name
+cluster_name: "{{ ansible_local.local.localfacts.full_cluster_name }}"
+
+# local cloud region fact
+region: "{{ ansible_local.local.localfacts.region }}"
+
+# AWS AMI-ID
+ami_id: "{{ ansible_local.local.localfacts.ami_id }}"

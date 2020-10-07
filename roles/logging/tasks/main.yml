@@ -1,0 +1,233 @@
+---
+# tasks file for logging
+
+- name: Set Namespace for cluster logging
+  k8s:
+    state: present
+    api_version: v1
+    kind: Namespace
+    merge_type: 
+      - strategic-merge
+      - merge     
+    definition:
+      metadata:
+        name: openshift-logging
+        annotations:
+          openshift.io/node-selector: ""
+        labels:
+          openshift.io/cluster-monitoring: "true"
+
+
+- name: Deploy elasticsearch operator
+  k8s:
+    state: present
+    api_version: operators.coreos.com/v1alpha1
+    kind: Subscription
+    name: elasticsearch-operator
+    namespace: openshift-operators
+    merge_type: 
+      - strategic-merge
+      - merge     
+    definition:
+      spec:
+        channel: '4.4'
+        installPlanApproval: Automatic
+        name: elasticsearch-operator
+        source: redhat-operators
+        sourceNamespace: openshift-marketplace
+
+
+- name: Set Operator Group for cluster logging
+  k8s:
+    state: present
+    api_version: operators.coreos.com/v1
+    kind: OperatorGroup
+    namespace: openshift-logging
+    merge_type: 
+      - strategic-merge
+      - merge     
+    definition:
+      metadata:
+        name: openshift-logging
+      spec:
+        targetNamespaces:
+        - openshift-logging
+
+- name: Pause for 10 seconds for OperatorGroup to be created
+  pause:
+    seconds: 10
+
+- name: Deploy cluster logging operator
+  k8s:
+    state: present
+    api_version: operators.coreos.com/v1alpha1
+    kind: Subscription
+    name: cluster-logging
+    namespace: openshift-logging
+    merge_type: 
+      - strategic-merge
+      - merge     
+    definition:
+      spec:
+        channel: '4.4'
+        installPlanApproval: Automatic
+        name: cluster-logging
+        source: redhat-operators
+        sourceNamespace: openshift-marketplace
+
+
+- name: Pause for 30 seconds for both operators to be created
+  pause:
+    seconds: 30
+
+- name: Deploy ClusterLogging
+  k8s:
+    state: present
+    api_version: logging.openshift.io/v1
+    kind: ClusterLogging
+    name: "instance" 
+    namespace: "openshift-logging"
+    merge_type: 
+      - strategic-merge
+      - merge     
+    definition:
+      spec:
+        managementState: "Managed"  
+        logStore:
+          type: "elasticsearch"  
+          elasticsearch:
+            nodeCount: '{{ es_node_count }}'
+            storage:
+              storageClassName: '{{ storage_class }}'
+              size: '{{ es_pv_size }}'
+            redundancyPolicy: "SingleRedundancy"
+            nodeSelector:
+              node-role.kubernetes.io/infra: ""
+            tolerations:
+            - effect: NoSchedule
+              key: infra
+              value: reserved
+            - effect: NoExecute
+              key: infra
+              value: reserved
+            resources:
+              limits:
+                cpu: 500m
+                memory: 8Gi
+              requests:
+                cpu: 500m
+                memory: 8Gi
+        visualization:
+          type: "kibana"  
+          kibana:
+            replicas: 1
+            nodeSelector:
+              node-role.kubernetes.io/infra: ""
+            tolerations:
+            - effect: NoSchedule
+              key: infra
+              value: reserved
+            - effect: NoExecute
+              key: infra
+              value: reserved
+        curation:
+          type: "curator"  
+          curator:
+            schedule: '{{ curator_cron_schedule }}'
+            nodeSelector:
+              node-role.kubernetes.io/infra: ""
+            tolerations:
+            - effect: NoSchedule
+              key: infra
+              value: reserved
+            - effect: NoExecute
+              key: infra
+              value: reserved
+        collection:
+          logs:
+            type: "fluentd"  
+            fluentd: {}
+
+- name:  Create empty ConfigMap for intermediateCA
+  k8s:
+    state: present
+    kind: ConfigMap
+    namespace: openshift-logging
+    name: trusted-ca
+    merge_type: 
+      - strategic-merge
+      - merge     
+    definition:
+      metadata:
+        labels:
+          config.openshift.io/inject-trusted-cabundle: 'true'
+  when: cluster_version != "4.3"   
+
+
+- name: Pause for 30 seconds for kibana deployment to be created
+  pause:
+    seconds: 30
+
+- name: Patch Kibana Deployment
+  k8s:
+    state: present
+    kind: Deployment
+    name: kibana
+    namespace: openshift-logging
+    merge_type: 
+      - strategic-merge
+      - merge     
+    definition:
+      spec:
+        template:
+          spec:
+            containers:
+              - name: kibana
+                volumeMounts:
+                  - name: trusted-ca
+                    readOnly: true
+                    mountPath: /etc/pki/ca-trust/extracted/pem
+              - name: kibana-proxy
+                volumeMounts:
+                  - name: trusted-ca
+                    readOnly: true
+                    mountPath: /etc/pki/ca-trust/extracted/pem
+            volumes:
+              - name: trusted-ca
+                configMap:
+                  name: trusted-ca
+                  items:
+                    - key: ca-bundle.crt
+                      path: tls-ca-bundle.pem
+                  defaultMode: 420      
+  when: cluster_version != "4.3"    
+
+- name: Setup Curator log rotation
+  k8s:
+    state: present
+    kind: ConfigMap
+    api_version: v1
+    name: curator
+    namespace: openshift-logging
+    merge_type: 
+      - strategic-merge
+      - merge     
+    definition:
+      data:
+        config.yaml: |
+          # Logging example curator config file
+      
+          # uncomment and use this to override the defaults from env vars
+          .defaults:
+            delete:
+              days: {{ default_log_rotation }}
+      
+          # to keep ops logs for a different duration:
+          .operations:
+            delete:
+              days: {{ ocp_log_rotation }}
+      
+          # example for a normal project
+          #myapp:
+          #  delete:
+          #    weeks: 1

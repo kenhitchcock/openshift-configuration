@@ -1,0 +1,60 @@
+---
+
+- name: Get the list of MachineSets
+  shell: KUBECONFIG={{ kube_config }} oc get machinesets -n openshift-machine-api | awk 'NR>1{print$1}'
+  register: machineset_list
+
+- set_fact:
+    machinesets: "{{ machineset_list.stdout_lines }}"
+
+- debug:
+    var: machinesets
+
+- name: Create Cluster Autoscaler Object
+  k8s:
+    api_version: autoscaling.openshift.io/v1
+    state: present
+    merge_type: 
+      - strategic-merge
+      - merge
+    kind: ClusterAutoscaler
+    name: default
+    definition:
+      spec:
+        podPriorityThreshold: -10 
+        resourceLimits:
+          maxNodesTotal: "{{ max_node_total }}" 
+          cores:
+            min: 8 
+            max: 128 
+          memory:
+            min: 4 
+            max: 256 
+        scaleDown: 
+          enabled: true 
+          delayAfterAdd: 10m 
+          delayAfterDelete: 5m 
+          delayAfterFailure: 30s 
+          unneededTime: 60s 
+
+- name: Create Machine Autoscaler Objects for MachineSets
+  k8s:
+    api_version: autoscaling.openshift.io/v1beta1
+    state: present
+    merge_type: 
+      - strategic-merge
+      - merge
+    kind: MachineAutoscaler
+    namespace: openshift-machine-api
+    definition:
+      metadata:
+        name: "{{ item }}"
+      spec:
+        minReplicas: 1 
+        maxReplicas: "{{ max_node_per_machineset }}"
+        scaleTargetRef: 
+          apiVersion: machine.openshift.io/v1beta1
+          kind: MachineSet 
+          name: "{{ item }}"
+  with_items:
+    - "{{ machinesets }}"

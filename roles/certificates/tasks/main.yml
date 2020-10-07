@@ -1,0 +1,69 @@
+---
+- name: Copy CA Bundle
+  copy:
+    src: "{{ ca_bundle_location }}"
+    dest: "{{ role_path }}/files/ca-bundle.crt"
+    mode: '0444'
+
+- name: Create Config Map for CA Bundle
+  k8s:
+    state: present
+    kind: ConfigMap
+    name: custom-ca
+    namespace: openshift-config
+    merge_type: 
+      - strategic-merge
+      - merge     
+    definition:
+      data: 
+        ca-bundle.crt: "{{ lookup('file', role_path + '/files/ca-bundle.crt') }}" 
+
+- name: Patch Global Proxy with new trustedCA bundle
+  k8s:
+    state: present
+    merge_type: 
+      - strategic-merge
+      - merge
+    kind: Proxy
+    name: cluster
+    definition:
+      spec:
+        trustedCA:
+          name: custom-ca
+
+- name: import certificate vars
+  include_vars:
+    file: "{{ role_path }}/vars/vault.yml"
+
+- name: Create a Secret with crt and key
+  k8s:
+    state: present
+    kind: secret
+    name: ingress-certificate
+    namespace: openshift-ingress
+    merge_type: 
+      - strategic-merge
+      - merge     
+    definition:
+      data:
+        tls.crt: "{{ certificate | b64encode }}"
+        tls.key: "{{ private_key | b64encode }}"
+
+- name: Patch Ingress Controller
+  k8s:
+    state: present
+    merge_type: 
+      - strategic-merge
+      - merge
+    kind: IngressController
+    name: default
+    namespace: openshift-ingress-operator
+    definition:
+      spec:
+        defaultCertificate:
+          name: ingress-certificate
+
+- name: Remove files from files directory
+  file:
+    path: "{{ role_path }}/files/ca-bundle.crt"
+    state: absent

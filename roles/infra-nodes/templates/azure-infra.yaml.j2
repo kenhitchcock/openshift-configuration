@@ -1,0 +1,71 @@
+apiVersion: machine.openshift.io/v1beta1
+kind: MachineSet
+metadata:
+  labels:
+    machine.openshift.io/cluster-api-cluster:  {{ cluster_name }}
+    machine.openshift.io/cluster-api-machine-role: {{ item.name }} 
+    machine.openshift.io/cluster-api-machine-type: {{ item.name }} 
+  name: {{ cluster_name }}-{{ item.name }}-{{ region }}{{ item.az }}
+  namespace: openshift-machine-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      machine.openshift.io/cluster-api-cluster: {{ cluster_name }} 
+      machine.openshift.io/cluster-api-machineset: {{ cluster_name }}-{{ item.name }}-{{ region }}{{ item.az }} 
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        machine.openshift.io/cluster-api-cluster: {{ cluster_name }}
+        machine.openshift.io/cluster-api-machine-role: {{ item.name }} 
+        machine.openshift.io/cluster-api-machine-type: {{ item.name }} 
+        machine.openshift.io/cluster-api-machineset: {{ cluster_name }}-{{ item.name }}-{{ region }}{{ item.az }} 
+    spec:
+      metadata:
+        creationTimestamp: null
+        labels:
+          node-role.kubernetes.io/{{ item.name }}: "" 
+      providerSpec:
+        value:
+          apiVersion: azureproviderconfig.openshift.io/v1beta1
+          credentialsSecret:
+            name: azure-cloud-credentials
+            namespace: openshift-machine-api
+          image:
+            offer: ""
+            publisher: ""
+            resourceID: /resourceGroups/{{ cluster_name }}-rg/providers/Microsoft.Compute/images/{{ cluster_name }}
+            sku: ""
+            version: ""
+          internalLoadBalancer: ""
+          kind: AzureMachineProviderSpec
+          location: {{ region }}
+          managedIdentity: {{ cluster_name }}-identity 
+          metadata:
+            creationTimestamp: null
+          natRule: null
+          networkResourceGroup: ""
+          osDisk:
+            diskSizeGB: 128
+            managedDisk:
+              storageAccountType: Premium_LRS
+            osType: Linux
+          publicIP: false
+          publicLoadBalancer: ""
+          resourceGroup: {{ cluster_name }}-rg 
+          sshPrivateKey: ""
+          sshPublicKey: ""
+          subnet: {{ cluster_name }}-worker-subnet   
+          userDataSecret:
+            name: worker-user-data 
+          vmSize: {{ vm_size }}
+          vnet: {{ cluster_name }}-vnet 
+          zone: "{{ item.az }}" 
+      taints:
+        - effect: NoSchedule
+          key: infra
+          value: reserved
+        - effect: NoExecute
+          key: infra
+          value: reserved

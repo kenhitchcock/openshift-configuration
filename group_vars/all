@@ -1,0 +1,140 @@
+########################## ANSIBLE GLOBAL VARS ########################### 
+
+ansible_python_interpreter: /usr/bin/python3
+
+########################### CLUSTER AUTHENTICATION ########################
+
+# Set the kubeconfig 
+kube_config:
+
+# Kube API key to access the cluster
+kube_api_key: 
+
+# Kube username to access the cluster
+kube_username:
+
+# Kube password to access the cluster
+kube_password:
+
+# URL to the Kube API server
+kube_host: 
+
+########################### CLIENT SPECIFIC ###########################
+# Client name
+console_name: "PROD"
+
+# Internal Image Registry Persistent Storage size (If NFS server is used)
+image_registry_pv_size: 500Gi
+
+# Internal Image Registry Persistent Storage type (If cloud provider does not support RWX storage permissions)
+image_registry_storage_type: nfs
+
+## HTTP_PROXY and NO_PROXY values (If Http Proxy is used)
+no_proxy: 
+proxy_url: 
+
+## CA Bundle with Intermediate certificate (if used)
+ca_bundle_location: /etc/pki/tls/certs/ca-bundle.crt
+
+######################### ETCD BACKUP CONFIGS ######################### 
+
+# Persistent Volume size for ETCD Backups.
+etcd_pv_size: 20Gi
+
+# ETCD Backup CronJob schedule
+etcd_backup_cron_schedule: '15 3 * * *'
+
+############################### STORAGE ###############################  
+### SET AS PER YOUR CLOUD PROVIDER ####
+
+# Primary Storage Class (If NFS server is used, PVs must be created in advanced)
+# i.e: azure= managed-premium - aws= gp2
+storage_class: gp2
+
+############################ USER AUTHENTICATION ############################  
+
+# Set the Authentication mechanism used:
+# available: 
+# AD - Active Directory via LDAP 
+# HTPasswd - HTPassword authentication
+auth: HTPasswd
+
+################## If HTPasswd is used:
+
+# OpenShift Users and Group Names
+groups_and_users: 
+  cluster_admin: 
+    group_name: 'OpenShift Admins'
+    username: cluster_admin_user
+  cluster_reader: 
+    group_name: 'OpenShift ReadOnly'
+    username: cluster_reader_user
+  developer:
+      group_name: 'OpenShift Developer'
+      username: developer_user
+  tester:
+    group_name: 'OpenShift Tester'
+    username: tester_user
+
+# RBAC example developer namespaces
+project_names: 
+    - developer-project-1
+    - developer-project-2
+    - developer-project-3
+
+#######################################
+
+########## If Active Directory is used:
+
+#LDAP Sync cron schedule
+ldap_cron_schedule: '10 */4 * * *'
+
+#######################################
+
+############################ LOGGING AND MONITORING ############################  
+
+# Number of Elasticsearch Pods
+es_node_count: 2
+
+# Persistent Volume size for Elasticsearch
+es_pv_size: 16G
+
+# Persistent Volume size for Prometheus and Alertmanager
+prom_pv_size: 16G
+
+# Curator schedule
+curator_cron_schedule: '5 2 * * *'
+
+# Elasticsearch logs rotation in Days
+default_log_rotation: 1
+ocp_log_rotation: 1
+
+############################## QUOTAS AND LIMITS ##############################
+
+# Across all pods in a non-terminal state, the sum of CPU requests cannot exceed this value.
+requests_cpu: 1
+
+# Across all pods in a non-terminal state, the sum of memory requests cannot exceed this value.
+requests_memory: 5Gi
+
+# Across all pods in a non-terminal state, the sum of CPU limits cannot exceed this value.
+limits_cpu: 2
+
+# Across all pods in a non-terminal state, the sum of memory limits cannot exceed this value.
+limits_memory: 10Gi
+
+# The total number of persistent volume claims that can exist in the namespace.
+persistentvolumeclaims: "4"
+
+################################# AUTOSCALING and INFRA NODES #################################
+
+# For Cluster Autoscaler
+max_node_total: 24
+
+# For Machine Autoscalers
+max_node_per_machineset: 1
+
+# Infra node size (According to your Cloud Provider)
+# Default Azure VM size: Standard_D4s_v3
+# Default AWS VM size: m4.xlarge
+vm_size: m4.xlarge

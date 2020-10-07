@@ -1,0 +1,126 @@
+
+---
+- name: CronJobs
+  block:
+    - name: Create Service Account approver
+      k8s:
+        state: present
+        kind: ServiceAccount
+        namespace: openshift-config
+        name: approver
+
+    - name: Bind cluster-admin role to the approver Service Account
+      k8s:
+        state: present
+        api_version: rbac.authorization.k8s.io/v1
+        kind: ClusterRoleBinding
+        name: cluster-admin-approver-sa-crb
+        merge_type: 
+          - strategic-merge
+          - merge     
+        definition:
+          metadata:
+            annotations:
+              rbac.authorization.kubernetes.io/autoupdate: "true"  
+          roleRef:
+            apiGroup: rbac.authorization.k8s.io
+            kind: ClusterRole
+            name: cluster-admin
+          subjects:
+          - kind: ServiceAccount
+            name: approver
+            namespace: openshift-config
+
+    - name: Create Cluster Role for Service Account
+      k8s:
+        state: present
+        api_version: rbac.authorization.k8s.io/v1
+        kind: ClusterRole
+        name: use-privileged-scc-role
+        merge_type: 
+          - strategic-merge
+          - merge     
+        definition:
+          rules:
+          - apiGroups:
+            - security.openshift.io
+            resourceNames:
+            - privileged
+            resources:
+            - securitycontextconstraints
+            verbs:
+            - use
+
+    - name: Bind use-privileged-scc-role role to the approver Service Account
+      k8s:
+        state: present
+        api_version: rbac.authorization.k8s.io/v1
+        kind: RoleBinding
+        name: use-privileged-scc-rolebinding
+        namespace: openshift-config
+        merge_type: 
+          - strategic-merge
+          - merge     
+        definition:
+          roleRef:
+            apiGroup: rbac.authorization.k8s.io
+            kind: ClusterRole
+            name: use-privileged-scc-role
+          subjects:
+          - kind: ServiceAccount
+            name: approver
+            namespace: openshift-config
+
+# ETCD Backup 
+
+    - name: Render the ETCD Backup CronJob template
+      template:
+        src: templates/etcd-backup-cronjob.yaml.j2 
+        dest: "{{ role_path }}/files/etcd-backup-cronjob.yaml"
+        mode: '0600'
+
+    - name: Render the ETCD Backup ConfigMap template
+      template:
+        src: templates/etcd-backup-configmap.yaml.j2 
+        dest: "{{ role_path }}/files/etcd-backup-configmap.yaml"
+        mode: '0600'
+
+    - name: Create ETCD PVC
+      k8s:
+        state: present
+        kind: PersistentVolumeClaim
+        api_version: v1
+        name: etcd-backup
+        namespace: openshift-config
+        merge_type: 
+          - strategic-merge
+          - merge     
+        definition:
+          spec:
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: '{{ etcd_pv_size }}'
+            storageClassName: '{{ storage_class }}'
+            volumeMode: Filesystem
+
+    - name: Create ETCD Backup ConfigMap
+      k8s:
+        state: present
+        src: "{{ role_path }}/files/etcd-backup-configmap.yaml"
+
+    - name: Create ETCD Backup CronJob
+      k8s:
+        state: present
+        src: "{{ role_path }}/files/etcd-backup-cronjob.yaml"
+
+    - name: Remove files from files directory
+      file:
+        path: "{{ role_path }}/files/etcd-backup-cronjob.yaml"
+        state: absent
+
+    - name: Remove files from files directory
+      file:
+        path: "{{ role_path }}/files/etcd-backup-configmap.yaml"
+        state: absent

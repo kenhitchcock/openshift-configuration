@@ -1,0 +1,99 @@
+---
+- name: LDAP sync CronJob
+  block:
+    - name: Create ConfigMap for LDAP sync
+      k8s:
+        state: present
+        kind: ConfigMap
+        api_version: v1
+        name: ldap-sync
+        namespace: openshift-config
+        merge_type: 
+          - strategic-merge
+          - merge     
+        definition:
+          data:
+            ldap-sync.sh: >-
+              #!/bin/sh
+          
+              oc adm groups sync --sync-config=/ldap-sync/ldap-sync.yaml
+              --whitelist=/ldap-sync/whitelist.yaml --confirm; echo "Above AD Groups were
+              synced with OCP"
+            ldap-sync.yaml: |
+              kind: LDAPSyncConfig
+              apiVersion: v1
+              url: "{{ ad_server_url }}"
+              insecure: true
+              bindDN: "{{ ad_service_account }}"
+              bindPassword: "{{ ad_password }}"
+              augmentedActiveDirectory:
+                  groupsQuery:
+                      baseDN: "{{ group_base_dn }}" #"OU=Open Shift,OU=Groups,DC=office,DC=local"
+                      derefAliases: never
+                      pageSize: 0
+                  groupUIDAttribute: dn
+                  groupNameAttributes: [ cn ]
+                  usersQuery:
+                      baseDN: "{{ user_base_dn }}" #"ou=IT Staff,dc=office,dc=local"
+                      scope: sub
+                      filter: (objectclass=organizationalPerson)
+                      derefAliases: never
+                      pageSize: 0
+                  userNameAttributes: [ sAMAccountName ]
+                  groupMembershipAttributes: [ "memberOf:1.2.840.113556.1.4.1941:" ]
+            whitelist.yaml: |
+              cn="{{ ad_group_1 }}",ou=Open Shift,ou=Groups,dc=office,dc=local
+              cn="{{ ad_group_2 }}",ou=Open Shift,ou=Groups,dc=office,dc=local
+              cn="{{ ad_group_3 }}",ou=Open Shift,ou=Groups,dc=office,dc=local
+
+
+    - name: Create CronJob for LDAP sync
+      k8s:
+        state: present
+        kind: CronJob
+        api_version: batch/v1beta1
+        name: ldap-sync
+        namespace: openshift-config
+        merge_type: 
+          - strategic-merge
+          - merge     
+        definition:
+          metadata:
+            labels:
+              run: ldap-sync
+          spec:
+            schedule: '{{ ldap_cron_schedule }}'
+            concurrencyPolicy: Replace
+            suspend: false
+            jobTemplate:
+              metadata:
+                creationTimestamp: null
+              spec:
+                template:
+                  metadata:
+                    creationTimestamp: null
+                    labels:
+                      run: ldap-sync
+                  spec:
+                    restartPolicy: OnFailure
+                    serviceAccountName: approver
+                    containers:
+                      - name: ldap-sync
+                        image: registry.redhat.io/openshift4/ose-cli
+                        command:
+                          - /bin/sh
+                          - '-c'
+                          - /ldap-sync/ldap-sync.sh
+                        resources: {}
+                        volumeMounts:
+                          - name: ldap-sync
+                            mountPath: /ldap-sync
+                        terminationMessagePath: /dev/termination-log
+                        terminationMessagePolicy: File
+                        imagePullPolicy: Always
+                    serviceAccount: approver
+                    volumes:
+                      - name: ldap-sync
+                        configMap:
+                          name: ldap-sync
+                          defaultMode: 347

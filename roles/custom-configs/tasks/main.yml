@@ -1,0 +1,239 @@
+---
+- name: Expose Image Registry
+  k8s:
+    api_version: imageregistry.operator.openshift.io/v1
+    state: present
+    merge_type: 
+      - strategic-merge
+      - merge
+    kind: Config
+    name: cluster
+    definition:
+      spec:
+        defaultRoute: true
+        replicas: 2
+        managementState: Managed
+
+- name: Set storage for Image Registry
+  k8s:
+    api_version: imageregistry.operator.openshift.io/v1
+    state: present
+    merge_type: 
+      - strategic-merge
+      - merge
+    kind: Config
+    name: cluster
+    definition:
+      spec:
+        storage:
+          pvc:
+            claim: image-registry-storage
+  when: cloud != "AWS" and cloud != "Azure" and cloud != "GCP"
+
+- name: Customise Image Pruner
+  k8s:
+    api_version: imageregistry.operator.openshift.io/v1
+    state: present
+    merge_type: 
+      - strategic-merge
+      - merge
+    kind: ImagePruner
+    name: cluster
+    definition:
+      spec:
+        failedJobsHistoryLimit: 3
+        keepTagRevisions: 5
+        schedule: 15 01 * * 6
+        successfulJobsHistoryLimit: 3
+        suspend: false
+  when: cluster_version != "4.3"
+
+- name: Disable Self-Provisioner
+  k8s:
+    api_version: rbac.authorization.k8s.io/v1
+    kind: ClusterRoleBinding
+    merge_type: 
+      - strategic-merge
+      - merge        
+    state: present
+    name: self-provisioners
+    definition:
+      metadata:
+        annotations:
+          rbac.authorization.kubernetes.io/autoupdate: "false"
+      subjects: null
+
+- name: Create Default Project Template
+  k8s:
+    state: present
+    kind: Template
+    api_version: template.openshift.io/v1
+    namespace: openshift-config
+    name: project-request
+    merge_type: 
+      - strategic-merge
+      - merge     
+    definition:
+      objects:
+      - apiVersion: networking.k8s.io/v1
+        kind: NetworkPolicy
+        metadata:
+          name: allow-from-self
+        spec:
+          podSelector: {}
+          ingress:
+          - from:
+              - podSelector: {}
+          policyTypes:
+          - Ingress
+      - apiVersion: networking.k8s.io/v1
+        kind: NetworkPolicy
+        metadata:
+          name: allow-from-openshift-logging
+        spec:
+          ingress:
+          - from:
+            - namespaceSelector:
+                matchLabels:
+                  network.openshift.io/policy-group: logging
+          podSelector: {}
+          policyTypes:
+          - Ingress
+      - apiVersion: networking.k8s.io/v1
+        kind: NetworkPolicy
+        metadata:
+          name: allow-from-openshift-monitoring
+        spec:
+          ingress:
+          - from:
+            - namespaceSelector:
+                matchLabels:
+                  network.openshift.io/policy-group: monitoring
+          podSelector: {}
+          policyTypes:
+          - Ingress
+      - apiVersion: networking.k8s.io/v1
+        kind: NetworkPolicy
+        metadata:
+          name: allow-from-openshift-ingress
+        spec:
+          ingress:
+          - from:
+            - namespaceSelector:
+                matchLabels:
+                  network.openshift.io/policy-group: ingress
+          podSelector: {}
+          policyTypes:
+          - Ingress
+      - apiVersion: v1
+        kind: LimitRange
+        metadata:
+          name: "openshift-limit-ranges"
+        spec:
+          limits:
+            - type: Container
+              default:
+                cpu: 100m
+                memory: 200Mi
+              defaultRequest:
+                cpu: 50m
+                memory: 100Mi
+      - apiVersion: v1
+        kind: ResourceQuota
+        metadata:
+          name: "openshift-resource-quota"
+        spec:
+          hard:
+            requests.cpu: '{{ requests_cpu }}'
+            requests.memory: '{{ requests_memory }}' 
+            limits.cpu: '{{ limits_cpu }}'
+            limits.memory: '{{ limits_memory }}'
+            persistentvolumeclaims: '{{ persistentvolumeclaims }}'
+      - apiVersion: project.openshift.io/v1
+        kind: Project
+        metadata:
+          annotations:
+            openshift.io/description: ${PROJECT_DESCRIPTION}
+            openshift.io/display-name: ${PROJECT_DISPLAYNAME}
+            openshift.io/requester: ${PROJECT_REQUESTING_USER}
+          creationTimestamp: null
+          name: ${PROJECT_NAME}
+        spec: {}
+        status: {}
+      - apiVersion: rbac.authorization.k8s.io/v1
+        kind: RoleBinding
+        metadata:
+          creationTimestamp: null
+          name: admin
+          namespace: ${PROJECT_NAME}
+        roleRef:
+          apiGroup: rbac.authorization.k8s.io
+          kind: ClusterRole
+          name: admin
+        subjects:
+        - apiGroup: rbac.authorization.k8s.io
+          kind: User
+          name: ${PROJECT_ADMIN_USER}
+      parameters:
+      - name: PROJECT_NAME
+      - name: PROJECT_DISPLAYNAME
+      - name: PROJECT_DESCRIPTION
+      - name: PROJECT_ADMIN_USER
+      - name: PROJECT_REQUESTING_USER
+
+- name: Patch Global Project config
+  k8s:
+    api_version: config.openshift.io/v1
+    state: present
+    merge_type: 
+      - strategic-merge
+      - merge
+    name: cluster
+    kind: Project
+    definition:
+      spec:
+        projectRequestTemplate:
+          name: project-request
+
+- name: Set Custom Console Banner name
+  k8s:
+    api_version: operator.openshift.io/v1
+    state: present
+    merge_type: 
+      - strategic-merge
+      - merge
+    kind: Console
+    name: cluster
+    definition:
+      spec:
+        customization:
+          customProductName: "{{ console_name }}"
+
+- name: Make sure proxy setting is in-place
+  k8s:
+    api_version: config.openshift.io/v1
+    state: present
+    merge_type:
+      - strategic-merge
+      - merge
+    kind: Proxy
+    name: cluster
+    definition:
+      spec:
+        httpProxy: '{{ proxy_url }}'
+        httpsProxy: '{{ proxy_url }}'
+        noProxy: '{{ no_proxy }}'
+
+- name: Change Registry URL
+  k8s:
+    state: present
+    api_version: route.openshift.io/v1
+    merge_type: 
+      - strategic-merge
+      - merge
+    name: default-route
+    kind: Route
+    namespace: openshift-image-registry
+    definition:
+      spec:
+        host: "{{ image_registry_url }}"

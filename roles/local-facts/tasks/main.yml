@@ -1,0 +1,62 @@
+---
+- name: Get cluster info
+  k8s_info:
+    api_version: config.openshift.io/v1
+    name: cluster
+    kind: Infrastructure
+  register: clusterInfo
+
+- name: Get cluster version
+  k8s_info:
+    api_version: config.openshift.io/v1
+    kind: ClusterVersion
+    name: version
+  register: clusterVersion
+
+- name: Get Machine Region Info
+  k8s_info:
+    api_version: machine.openshift.io/v1beta1
+    kind: Machine
+    namespace: openshift-machine-api
+  register: machineRegion
+
+- name: Get storage class type
+  k8s_info:
+    api_version: storage.k8s.io/v1
+    kind: StorageClass
+  register: storageClassInfo
+
+
+- name: Get domain
+  k8s_info:
+    api_version: config.openshift.io/v1
+    kind: Ingress
+    name: cluster
+  register: domain 
+
+- name: Set local-facts
+  vars:
+    region: 'resources[0].metadata.labels.["machine.openshift.io/region"][0]'
+  set_fact:
+    FULL_CLUSTER_NAME: "{{ clusterInfo.resources[0].status.infrastructureName }}"
+    CLOUD: "{{ clusterInfo.resources[0].status.platform }}"
+    REGION: "{{ machineRegion | json_query(region) }}"
+    CLUSTER_VERSION: "{{ clusterVersion.resources[0].status.history[0].version | regex_findall('\\d+\\.\\d+') | first }}" 
+    storage_class: "{{ storageClassInfo | json_query('resources[0].metadata.name') }}"
+    URL: "{{ domain.resources[0].spec.domain }}"
+
+
+- name: Get amiID from worker MachineSet
+  block:
+    - name: Look-up MachineSetInfo
+      k8s_info:
+        api_version: machine.openshift.io/v1beta1
+        name: "{{ FULL_CLUSTER_NAME }}-worker-{{REGION}}a"
+        kind: MachineSet
+        namespace: openshift-machine-api
+      register: machineSetInfo
+
+    - name: Set AMI_ID fact
+      set_fact:
+        AMI_ID: "{{ machineSetInfo.resources[0].spec.template.spec.providerSpec.value.ami.id }}"
+  when: CLOUD == "AWS"

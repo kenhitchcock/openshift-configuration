@@ -1,0 +1,118 @@
+---
+- name: Setup local Facts
+  hosts: localhost
+  connection: local
+  gather_facts: True
+  vars:
+    cloud: "{{ ansible_local.local.localfacts.cloud }}"
+    cluster_version: "{{ ansible_local.local.localfacts.cluster_version }}"
+    image_registry_url: "{{ ansible_local.local.localfacts.url }}"
+
+  module_defaults:
+    group/k8s:
+      validate_certs: no
+      host: "{{ kube_host }}"
+
+  # Run pre_tasks 
+  pre_tasks:
+
+  - name: install pip dependencies
+    tags:
+      - setup
+    pip:
+      state: present
+      extra_args: --user
+      name:
+        - pyyaml
+        - openshift
+        - passlib
+
+  - block:
+    - name: Log in (obtain access token)
+      any_errors_fatal: true
+      k8s_auth:
+        username: "{{ kube_username }}"
+        password: "{{ kube_password }}"
+      register: k8s_auth_results
+    always:
+      - name: Fail if user authentication is unauthorised. Skip if authorised.
+        fail:
+          msg: "Authorisation failed. Please provide a valid Username and Password"
+        when: k8s_auth_results.msg | default('') == 'Authorization failed.'
+    tags:
+      - setup 
+    when:
+      - not kube_config 
+      - not kube_api_key  
+
+  - name: Set kube api key fact
+    tags:
+      - setup
+    set_fact:
+      kube_api_key: "{{ k8s_auth_results.k8s_auth.api_key }}"
+    when: 
+      - not kube_config
+      - not kube_api_key  
+
+  - block:
+    - name: Check API key has sufficient privileges to run the playbook
+      any_errors_fatal: true
+      k8s_info:
+        api_key: "{{ kube_api_key }}"
+        kind: CustomResourceDefinition
+        namespace: default
+        name: clusterversions.config.openshift.io
+      register: check_crd_get_response
+    always:
+    - name: Fail if user or api-key doesn't have permissions for this task. Skip if user does.
+      fail:
+        msg: "FAILURE: User must be Cluster Admin to execute this playbook. Please provide a valid API-Key with Cluster Admin privileges."
+      notify:
+        - Revoke access token
+      when: check_crd_get_response.rc | default(0) == 1
+    tags:
+      - setup
+    when:
+      - kube_api_key | default(omit)
+      - not kube_config  
+
+  - name: run local facts
+    import_role:
+      name: local-facts
+    tags:
+    - setup
+
+  tasks:
+  - module_defaults:
+      group/k8s:
+        validate_certs: no
+        kubeconfig: "{{ kube_config }}"
+        host: "{{ kube_host }}"
+        api_key: "{{ kube_api_key }}"
+
+    name: Run Day 2 Roles
+    block:
+      - import_role:
+          name: oauth
+        tags:
+        - oauth
+
+      - import_role:
+          name: ad-sync
+        tags:
+        - ad-sync
+
+    always:
+      - name: Revoke access token notifier
+        debug:
+          msg: "Revoking Access Token"
+        notify:
+          - Revoke access token
+
+
+  handlers:
+    - name: Revoke access token
+      when: kube_api_key is defined
+      k8s_auth:
+        state: absent
+        api_key: "{{ kube_api_key }}"

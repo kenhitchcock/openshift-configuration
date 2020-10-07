@@ -1,0 +1,96 @@
+kind: CronJob
+apiVersion: batch/v1beta1
+metadata:
+  name: cronjob-etcd-backup
+  namespace: openshift-config
+  labels:
+    purpose: etcd-backup
+spec:
+  schedule: {{ etcd_backup_cron_schedule }}
+  startingDeadlineSeconds: 200
+  concurrencyPolicy: Forbid
+  suspend: false
+  jobTemplate:
+    spec:
+      backoffLimit: 0
+      template:
+        spec:
+          nodeSelector:
+            node-role.kubernetes.io/master: ''
+          restartPolicy: Never
+          activeDeadlineSeconds: 200
+          serviceAccountName: approver
+          hostNetwork: true
+          containers:
+            - resources:
+                requests:
+                  cpu: 300m
+                  memory: 250Mi
+              terminationMessagePath: /dev/termination-log
+              name: etcd-backup
+              command:
+                - /bin/sh
+                - '-c'
+                - >-
+                  /usr/local/bin/etcd-backup.sh && ls -1 /etcd-backup/* | sort -r | tail -n +6 | xargs rm -rf > /dev/null 2>&1
+              env:
+                - name: HTTP_PROXY
+                  value: {{ proxy_url }}
+                - name: HTTPS_PROXY
+                  value: {{ proxy_url }}
+                - name: NO_PROXY
+                  value: >-
+                    {{ no_proxy }}
+              securityContext:
+                privileged: true
+              imagePullPolicy: IfNotPresent
+              volumeMounts:
+                - name: certs
+                  mountPath: /etc/ssl/etcd/
+                - name: conf
+                  mountPath: /etc/etcd/
+                - name: kubeconfig
+                  mountPath: /etc/kubernetes/
+                - name: etcd-backup-script
+                  mountPath: /usr/local/bin/etcd-backup.sh
+                  subPath: etcd-backup.sh
+                - name: etcd-backup-script
+                  mountPath: /usr/local/bin/etcd-snapshot-backup-disconnected.sh
+                  subPath: etcd-snapshot-backup-disconnected.sh
+                - name: etcd-backup
+                  mountPath: /etcd-backup
+                - name: scripts
+                  mountPath: /usr/local/bin
+              terminationMessagePolicy: FallbackToLogsOnError
+              image: >-
+                quay.io/openshift-release-dev/ocp-v4.0-art-dev@sha256:6a2378154881e6f9a4638f41242518d850e19b0d7d9ef74a2be55b87f4625e87
+          serviceAccount: approver
+          tolerations:
+            - operator: Exists
+              effect: NoSchedule
+            - operator: Exists
+              effect: NoExecute
+          volumes:
+            - name: certs
+              hostPath:
+                path: /etc/kubernetes/static-pod-resources/etcd-member
+                type: ''
+            - name: conf
+              hostPath:
+                path: /etc/etcd
+                type: ''
+            - name: kubeconfig
+              hostPath:
+                path: /etc/kubernetes
+                type: ''
+            - name: scripts
+              hostPath:
+                path: /usr/local/bin
+                type: ''
+            - name: etcd-backup
+              persistentVolumeClaim:
+                claimName: etcd-backup
+            - name: etcd-backup-script
+              configMap:
+                name: etcd-backup-script
+                defaultMode: 493

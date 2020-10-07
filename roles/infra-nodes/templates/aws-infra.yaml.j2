@@ -1,0 +1,69 @@
+apiVersion: machine.openshift.io/v1beta1
+kind: MachineSet
+metadata:
+  labels:
+    machine.openshift.io/cluster-api-cluster: {{ cluster_name }}
+  name: {{ cluster_name }}-{{ item.name }}-{{ region }}{{ item.az }}
+  namespace: openshift-machine-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      machine.openshift.io/cluster-api-cluster: {{ cluster_name }}
+      machine.openshift.io/cluster-api-machineset: {{ cluster_name }}-{{ item.name }}-{{ region }}{{ item.az }}
+  template:
+    metadata:
+      labels:
+        machine.openshift.io/cluster-api-cluster: {{ cluster_name }}
+        machine.openshift.io/cluster-api-machine-role: infra
+        machine.openshift.io/cluster-api-machine-type: infra
+        machine.openshift.io/cluster-api-machineset: {{ cluster_name }}-{{ item.name }}-{{ region }}{{ item.az }}
+    spec:
+      metadata:
+        labels:
+          node-role.kubernetes.io/infra: ""
+      providerSpec:
+        value:
+          ami:
+            id: {{ ami_id }}
+          apiVersion: awsproviderconfig.openshift.io/v1beta1
+          blockDevices:
+          - ebs:
+              iops: 0
+              volumeSize: 120
+              volumeType: gp2
+          credentialsSecret:
+            name: aws-cloud-credentials
+          deviceIndex: 0
+          iamInstanceProfile:
+            id: {{ cluster_name }}-worker-profile
+          instanceType: {{ vm_size }}
+          kind: AWSMachineProviderConfig
+          metadata:
+            creationTimestamp: null
+          placement:
+            availabilityZone: {{ region }}{{ item.az }}
+            region: {{ region }}
+          publicIp: null
+          securityGroups:
+          - filters:
+            - name: tag:Name
+              values:
+              - {{ cluster_name }}-worker-sg
+          subnet:
+            filters:
+            - name: tag:Name
+              values:
+              - {{ cluster_name }}-private-{{ region }}{{ item.az }}
+          tags:
+          - name: kubernetes.io/cluster/{{ cluster_name }}
+            value: owned
+          userDataSecret:
+            name: worker-user-data
+      taints:
+        - effect: NoSchedule
+          key: infra
+          value: reserved
+        - effect: NoExecute
+          key: infra
+          value: reserved

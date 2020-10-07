@@ -1,0 +1,55 @@
+---
+- name: Create Storage Class
+  block:
+
+    - name: Create Primary Storage Class
+      k8s:
+        state: present
+        kind: StorageClass
+        api_version: storage.k8s.io/v1
+        name: '{{ image_registry_storage_type }}'
+        merge_type: 
+          - strategic-merge
+          - merge     
+        definition:
+          provisioner: no-provisioning
+          reclaimPolicy: Recycle
+          volumeBindingMode: Immediate
+
+    - name: Get the list of PVs
+      shell: KUBECONFIG={{ kube_config }} oc get pv | grep -v Bound | awk 'NR>1{print$1}'
+      register: pv_list
+
+    - name: Set PVs to use Custom StorageClass
+      k8s:
+        state: present
+        kind: PersistentVolume
+        api_version: v1
+        name: '{{ item }}'
+        merge_type: 
+          - strategic-merge
+          - merge     
+        definition:
+          spec:
+            storageClassName: '{{ image_registry_storage_type }}'
+      with_items: '{{ pv_list.stdout_lines }}'
+
+    - name: Create PVC for Image Registry
+      k8s:
+        state: present
+        kind: PersistentVolumeClaim
+        api_version: v1
+        name: image-registry-storage
+        namespace: openshift-image-registry
+        merge_type: 
+          - strategic-merge
+          - merge     
+        definition:
+          spec:
+            accessModes:
+              - ReadWriteMany
+            resources:
+              requests:
+                storage: '{{ image_registry_pv_size }}'
+            storageClassName: '{{ image_registry_storage_type }}'
+            volumeMode: Filesystem
