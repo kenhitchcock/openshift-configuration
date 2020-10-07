@@ -102,6 +102,11 @@
         tags:
         - ad-sync
 
+      - import_role:
+          name: monitoring
+        tags:
+        - monitoring
+
     always:
       - name: Revoke access token notifier
         debug:
