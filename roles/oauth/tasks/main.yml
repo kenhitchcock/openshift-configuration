@@ -215,7 +215,7 @@
             name: "{{ oauth_ldap_cert_configmap }}"
             namespace: "{{ oauth_ldap_namespace }}"
           data:
-            ca.crt: {{ lookup('file', '{{ oauth_ldap_cacert_file }}') | to_json }}
+            "ca.crt: {{ lookup('file', '{{ oauth_ldap_cacert_file }}') | to_json }}"
 
     - name: "Create the oAuth configuration for Ldap"
       k8s:

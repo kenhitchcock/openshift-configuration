@@ -2,7 +2,7 @@
 - name: Get cluster info
   k8s_info:
     api_version: config.openshift.io/v1
-    name: cluster
+    name: "{{ local_facts_clustername }}"
     kind: Infrastructure
   register: clusterInfo
 

@@ -19,6 +19,10 @@ kube_password:
 # URL to the Kube API server
 kube_host: 
 
+########################### Cluster details ###############################
+
+local_facts_clustername: "cluster"
+
 ########################### CLIENT SPECIFIC ###########################
 # Client name
 console_name: "PROD"
