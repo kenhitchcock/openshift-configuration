@@ -1,0 +1,61 @@
+---
+
+- name: "Create ldap secret"
+  k8s:
+    state: "{{ oauth_integration_state }}"
+    api_version: v1
+    kind: Secret
+    namespace: "{{ oauth_ldap_namespace }}"
+    name: "{{ oauth_ldap_secret }}"
+    merge_type: 
+      - strategic-merge
+      - merge     
+    definition:
+      type: Opaque
+      data:
+        bindPassword: "{{ oauth_ldap_bindpassword | b64encode }}"
+
+- name: "Create a config map"
+  k8s:
+    state: "{{ oauth_integration_state }}"
+    definition:
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: "{{ oauth_ldap_cert_configmap }}"
+        namespace: "{{ oauth_ldap_namespace }}"
+      data:
+        "ca.crt: {{ lookup('file', '{{ oauth_ldap_cacert_file }}') }}"
+
+- name: "Create the oAuth configuration for Ldap"
+  k8s:
+    state: "{{ oauth_integration_state }}"
+    api_version: config.openshift.io/v1
+    kind: OAuth
+    name: cluster
+    merge_type:
+      - strategic-merge
+      - merge
+    definition:
+      spec:
+        identityProviders:
+          - name: "{{ oauth_ldap_identityprovider_name }}"
+            mappingMethod: claim
+            type: LDAP 
+            ldap:
+              attributes:
+                id:
+                - "{{ oauth_ldap_attribute_id }}"
+                email:
+                - "{{ oauth_ldap_attribute_email }}"
+                name:
+                - "{{ oauth_ldap_attribute_name }}"
+                preferredUsername:
+                - "{{ oauth_ldap_attribute_preferredUsername }}"
+              bindDN: "{{ oauth_ldap_bindDN }}"
+              bindPassword: 
+                name: "{{ oauth_ldap_secret }}" 
+              ca: 
+                name: "{{ oauth_ldap_cert_configmap }}"
+              insecure: "{{ oauth_ldap_insecure }}" 
+              url: "{{ oauth_ldap_url }}"

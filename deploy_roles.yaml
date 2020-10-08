@@ -98,11 +98,6 @@
         - oauth
 
       - import_role:
-          name: ad-sync
-        tags:
-        - ad-sync
-
-      - import_role:
           name: monitoring
         tags:
         - monitoring

@@ -1,0 +1,151 @@
+---
+- name: LDAP sync CronJob
+  block:
+    - name: Create ConfigMap for LDAP sync
+      k8s:
+        state: "{{ oauth_integration_state }}"
+        kind: ConfigMap
+        api_version: v1
+        name: "{{ oauth_ad_sync_configmap }}"
+        namespace: "{{ oauth_ldap_namespace }}"
+        merge_type: 
+          - strategic-merge
+          - merge     
+        definition:
+          data:
+            ldap-sync.sh: >-
+              #!/bin/sh
+          
+              oc adm groups sync --sync-config=/"{{ oauth_ad_sync_name }}"/ldap-sync.yaml
+              --whitelist=/"{{ oauth_ad_sync_name }}"/whitelist.yaml --confirm; echo "Above AD Groups were
+              synced with OCP"
+            ldap-sync.yaml: |
+              kind: LDAPSyncConfig
+              apiVersion: v1
+              url: "{{ oauth_ldap_url }}"
+              insecure: true
+              bindDN: "{{ oauth_ldap_bindDN }}"
+              bindPassword: "{{ oauth_ldap_bindpassword }}"
+              augmentedActiveDirectory:
+                  groupsQuery:
+                      baseDN: "{{ oauth_sync_group_base_dn }}"
+                      scope: "{{ oauth_sync_group_scope }}"
+                      derefAliases: never
+                      pageSize: 0
+                  groupUIDAttribute: "{{ oauth_sync_group_groupUIDAttribute }}"
+                  groupNameAttributes: [ "{{ oauth_sync_group_groupNameAttributes }}" ]
+                  usersQuery:
+                      baseDN: "{{ oauth_sync_user_base_dn }}"
+                      scope: "{{ oauth_sync_user_scope }}"
+                      filter: "{{ oauth_sync_user_filter }}"
+                      derefAliases: never
+                      pageSize: 0
+                  userNameAttributes: [ "{{ oauth_ldap_attribute_preferredUsername }}" ]
+                  groupMembershipAttributes: [ "{{ oauth_sync_user_groupMembershipAttributes }}" ]
+            whitelist.yaml: |
+              cn="{{ oauth_sync_group_1 }}","{{ oauth_sync_group_base_dn }}"
+              cn="{{ oauth_sync_group_2 }}","{{ oauth_sync_group_base_dn }}"
+              cn="{{ oauth_sync_group_3 }}","{{ oauth_sync_group_base_dn }}"
+        when: oauth_ad_sync_usewhitelist
+
+# This section above with the whitelist.yaml should be rewritten using a template structure to dynamically grow the list.
+# example here https://github.com/kenhitchcock/ansible-role-cornerstone/blob/master/tasks/network-aws.yml
+# under the task  "[Cornerstone - AWS] Create Security Group"
+# This task basically dynamically grows the rules list within the ec2_group module.
+###########################################################################################################################
+
+    - name: Create ConfigMap for LDAP sync
+      k8s:
+        state: "{{ oauth_integration_state }}"
+        kind: ConfigMap
+        api_version: v1
+        name: "{{ oauth_ad_sync_configmap }}"
+        namespace: "{{ oauth_ldap_namespace }}"
+        merge_type: 
+          - strategic-merge
+          - merge     
+        definition:
+          data:
+            ldap-sync.sh: >-
+              #!/bin/sh
+          
+              oc adm groups sync --sync-config=/"{{ oauth_ad_sync_name }}"/ldap-sync.yaml
+              --confirm; echo "Above AD Groups were
+              synced with OCP"
+            ldap-sync.yaml: |
+              kind: LDAPSyncConfig
+              apiVersion: v1
+              url: "{{ oauth_ldap_url }}"
+              insecure: true
+              bindDN: "{{ oauth_ldap_bindDN }}"
+              bindPassword: "{{ oauth_ldap_bindpassword }}"
+              augmentedActiveDirectory:
+                  groupsQuery:
+                      baseDN: "{{ oauth_sync_group_base_dn }}"
+                      scope: "{{ oauth_sync_group_scope }}"
+                      derefAliases: never
+                      pageSize: 0
+                  groupUIDAttribute: "{{ oauth_sync_group_groupUIDAttribute }}"
+                  groupNameAttributes: [ "{{ oauth_sync_group_groupNameAttributes }}" ]
+                  usersQuery:
+                      baseDN: "{{ oauth_sync_user_base_dn }}"
+                      scope: "{{ oauth_sync_user_scope }}"
+                      filter: "{{ oauth_sync_user_filter }}"
+                      derefAliases: never
+                      pageSize: 0
+                  userNameAttributes: [ "{{ oauth_ldap_attribute_preferredUsername }}" ]
+                  groupMembershipAttributes: [ "{{ oauth_sync_user_groupMembershipAttributes }}" ]
+        when: not oauth_ad_sync_usewhitelist
+
+
+
+    - name: Create CronJob for LDAP sync
+      k8s:
+        state: "{{ oauth_integration_state }}"
+        kind: CronJob
+        api_version: batch/v1beta1
+        name: "{{ oauth_ad_sync_name }}"
+        namespace: "{{ oauth_ldap_namespace }}"
+        merge_type: 
+          - strategic-merge
+          - merge     
+        definition:
+          metadata:
+            labels:
+              run: "{{ oauth_ad_sync_name }}"
+          spec:
+            schedule: '{{ oauth_ad_sync_cron_schedule }}'
+            concurrencyPolicy: Replace
+            suspend: false
+            jobTemplate:
+              metadata:
+                creationTimestamp: null
+              spec:
+                template:
+                  metadata:
+                    creationTimestamp: null
+                    labels:
+                      run: "{{ oauth_ad_sync_name }}"
+                  spec:
+                    restartPolicy: OnFailure
+                    serviceAccountName: approver
+                    containers:
+                      - name: "{{ oauth_ad_sync_name }}"
+                        image: "{{ oauth_ad_sync_image }}"
+                        command:
+                          - /bin/sh
+                          - '-c'
+                          - /"{{ oauth_ad_sync_name }}"/ldap-sync.sh
+                        resources: {}
+                        volumeMounts:
+                          - name: "{{ oauth_ad_sync_name }}"
+                            mountPath: /"{{ oauth_ad_sync_name }}"
+                        terminationMessagePath: /dev/termination-log
+                        terminationMessagePolicy: File
+                        imagePullPolicy: Always
+                    serviceAccount: approver
+                    volumes:
+                      - name: "{{ oauth_ad_sync_name }}"
+                        configMap:
+                          name: "{{ oauth_ad_sync_name }}"
+                          defaultMode: 347
