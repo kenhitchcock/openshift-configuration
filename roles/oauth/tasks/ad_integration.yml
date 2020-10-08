@@ -15,17 +15,34 @@
       data:
         bindPassword: "{{ oauth_ldap_bindpassword | b64encode }}"
 
-- name: "Create a config map"
+- name: "slurp ca certs file"
+  slurp:
+    src: "{{ oauth_ldap_cacert_file }}"
+  register: cacertfile
+
+- name: create the configmap
   k8s:
     state: "{{ oauth_integration_state }}"
+    namespace: "{{ oauth_ldap_namespace }}"
     definition:
       apiVersion: v1
       kind: ConfigMap
       metadata:
         name: "{{ oauth_ldap_cert_configmap }}"
-        namespace: "{{ oauth_ldap_namespace }}"
       data:
-        "ca.crt: {{ lookup('file', '{{ oauth_ldap_cacert_file }}') }}"
+        ca.crt: "{{ cacertfile.content }}"
+
+#- name: "Create a config map"
+#  k8s:
+#    state: "{{ oauth_integration_state }}"
+#    definition:
+#      api_version: v1
+#      kind: ConfigMap
+#      metadata:
+#        name: "{{ oauth_ldap_cert_configmap }}"
+#        namespace: "{{ oauth_ldap_namespace }}"
+#    data: |
+#      "ca.crt: {{ lookup('file', '{{ oauth_ldap_cacert_file }}') }}"
 
 - name: "Create the oAuth configuration for Ldap"
   k8s:
