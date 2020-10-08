@@ -61,7 +61,7 @@ storage_class: gp2
 # available: 
 # AD - Active Directory via LDAP 
 # HTPasswd - HTPassword authentication
-auth: HTPasswd
+auth: AD
 
 ################## If HTPasswd is used:
 
@@ -97,8 +97,22 @@ ldap_cron_schedule: '10 */4 * * *'
 
 ############################ LOGGING AND MONITORING ############################  
 
+# Elasticsearch Operator install params
+es_operator_channel: 4.5
+es_operator_installPlanApproval: Automatic
+
+# Cluster Logging Operator install params
+log_operator_channel: 4.5
+log_operator_installPlanApproval: Automatic
+
+# Persistent Volume enabled
+pv_enabled: false
+
 # Number of Elasticsearch Pods
 es_node_count: 2
+
+# Number of Elasticsearch Pods
+es_node_memory: 2G
 
 # Persistent Volume size for Elasticsearch
 es_pv_size: 16G
