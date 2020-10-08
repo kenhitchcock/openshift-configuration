@@ -46,7 +46,7 @@
               cn="{{ oauth_sync_group_1 }}","{{ oauth_sync_group_base_dn }}"
               cn="{{ oauth_sync_group_2 }}","{{ oauth_sync_group_base_dn }}"
               cn="{{ oauth_sync_group_3 }}","{{ oauth_sync_group_base_dn }}"
-        when: oauth_ad_sync_usewhitelist
+      when: oauth_ad_sync_usewhitelist
 
 # This section above with the whitelist.yaml should be rewritten using a template structure to dynamically grow the list.
 # example here https://github.com/kenhitchcock/ansible-role-cornerstone/blob/master/tasks/network-aws.yml
@@ -95,7 +95,7 @@
                       pageSize: 0
                   userNameAttributes: [ "{{ oauth_ldap_attribute_preferredUsername }}" ]
                   groupMembershipAttributes: [ "{{ oauth_sync_user_groupMembershipAttributes }}" ]
-        when: not oauth_ad_sync_usewhitelist
+      when: not oauth_ad_sync_usewhitelist
 
 
 
