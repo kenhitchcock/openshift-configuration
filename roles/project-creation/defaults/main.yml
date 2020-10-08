@@ -1,0 +1,10 @@
+---
+projects:
+  project1:
+    project_creation_name: testing
+    project_creation_desc: Testing
+    project_creation_display_name: "This is a test project."
+  project2:
+    project_creation_name: measuring
+    project_creation_desc: Measuring
+    project_creation_display_name: "This is a measuring project."
