@@ -11,12 +11,11 @@
 - name: Create cluster monitoring ConfigMap
   k8s:
     state: present
+    name: "{{ monitoring-configmap-name }}"
     namespace: "{{ monitoring_namespace }}"
+    api_version: v1
+    kind: ConfigMap
     definition:
-      api_version: v1
-      kind: ConfigMap
-      metadata:
-        name: "{{ monitoring-configmap-name }}"
       data:
         config.yaml: |
           alertmanagerMain:
@@ -46,6 +45,3 @@
           thanosQuerier:
             nodeSelector:
               node-role.kubernetes.io/infra: ""
-
-
-   
