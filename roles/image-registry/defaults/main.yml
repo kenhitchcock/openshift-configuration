@@ -1,0 +1,19 @@
+---
+image_registry_namespace: openshift-image-registry
+image_registry_file: imageRegistryClusterConfig
+image_registry_pv: image-registry-pv
+image_registry_pvc: image-registry-pvc
+image_registry_pv_storage_size: 100Gi
+image_registry_pvc_storage_size: 100Gi
+image_registry_nfs_path: /registry
+image_registry_nfs_server: 172.16.231.181
+image_registry_pv_storageClassName: nfs01
+image_registry_pvc_storageClassName: nfs01
+
+#spec for Image Registry Config
+image_registry_config_defaultRoute: true
+image_registry_config_httpSecret: f9c4272bbf52c19436109cd23543d77dea27fce880a3c4c251f1e41726bd6af947fcc764cdd56f48a2960158a07ccdb5ad882d58be6a25c603ea30b9d18d0d24
+image_registry_config_logging: 2
+image_registry_config_managementState: Managed
+image_registry_config_replicas: 3
+image_registry_config_rolloutStrategy: RollingUpdate

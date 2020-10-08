@@ -1,0 +1,77 @@
+- name: Create PV
+  k8s:
+    apiVersion: v1
+    kind: PersistentVolume
+    namespace: "{{ image_registry_namespace }}"
+    metadata:
+      name: "{{ image_registry_pv }}"
+    spec:
+      accessModes:
+        - ReadWriteMany
+      capacity:
+          storage: "{{ image_registry_pv_storage_size }}"
+      nfs:
+        path: "{{ image_registry_nfs_path }}"
+        server: "{{ image_registry_nfs_server }}"
+      persistentVolumeReclaimPolicy: Retain
+      storageClassName: "{{ image_registry_pv_storageClassName }}"
+
+- name: Create PVC
+  k8s:
+    apiVersion: "v1"
+    kind: "PersistentVolumeClaim"
+    namespace: "{{ image_registry_namespace }}"
+    metadata:
+      name: "{{ image_registry_pvc }}"
+    spec:
+      accessModes:
+        - ReadWriteMany
+      resources:
+        requests:
+          storage: "{{ image_registry_pvc_storage_size }}"
+      storageClassName: "{{ image_registry_pvc_storageClassName }}"
+      volumeMode: Filesystem
+
+- name: Patch spec fields inc defaultRoute and managedState
+  k8s:
+    state: present
+    namespace: "{{ image_registry_namespace }}"
+    definition:
+      api_version: v1
+      kind: Config
+      metadata:
+        name: "{{ image_registry_file }}"
+#Need to edit so that this spec updates the existing spec in the config file
+      spec:
+        defaultRoute: "{{ image_registry_config_defaultRoute }}"
+        httpSecret: "{{ image_registry_config_httpSecret }}"
+        logging: "{{ image_registry_config_logging }}"
+        managementState: "{{ image_registry_config_managementState }}"
+        nodeSelector:
+          node-role.kubernetes.io/infra: ""
+        proxy: {}
+        replicas: "{{ image_registry_config_replicas }}"
+        requests:
+          read:
+            maxWaitInQueue: 0s
+          write:
+            maxWaitInQueue: 0s
+        rolloutStrategy: "{{ image_registry_config_rolloutStrategy }}"
+        storage:
+          pvc:
+            claim: "{{ image_registry_pvc }}"
+
+- name: Create image-registry-private-configuration-user secret
+  k8s:
+    state: present
+    api_version: v1
+    kind: Secret
+    namespace: "{{ image_registry_namespace }}"-config
+    name: image-registry-private-configuration-user
+    merge_type: 
+      - strategic-merge
+      - merge     
+    definition:
+      type: Opaque
+      data:
+        image-registry-private-configuration-user: "{{ lookup('file', role_path + '/files/imgregkey') | b64encode }}"
