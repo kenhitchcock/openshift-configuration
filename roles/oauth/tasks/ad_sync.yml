@@ -57,14 +57,15 @@
     - name: Create ConfigMap for LDAP sync
       k8s:
         state: "{{ oauth_integration_state }}"
-        kind: ConfigMap
-        api_version: v1
-        name: "{{ oauth_ad_sync_configmap }}"
         namespace: "{{ oauth_ldap_namespace }}"
         merge_type: 
           - strategic-merge
           - merge     
         definition:
+          apiVersion: v1
+          kind: ConfigMap
+          metadata:
+            name: "{{ oauth_ad_sync_configmap }}"
           data:
             ldap-sync.sh: >-
               #!/bin/sh

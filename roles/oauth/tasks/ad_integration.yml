@@ -30,7 +30,7 @@
       metadata:
         name: "{{ oauth_ldap_cert_configmap }}"
       data:
-        ca.crt: "{{ cacertfile.content }}"
+        ca.crt: "{{ cacertfile.content | b64decode }}"
 
 #- name: "Create a config map"
 #  k8s:

@@ -98,11 +98,11 @@ ldap_cron_schedule: '10 */4 * * *'
 ############################ LOGGING AND MONITORING ############################  
 
 # Elasticsearch Operator install params
-es_operator_channel: 4.5
+es_operator_channel: "4.5"
 es_operator_installPlanApproval: Automatic
 
 # Cluster Logging Operator install params
-log_operator_channel: 4.5
+log_operator_channel: "4.5"
 log_operator_installPlanApproval: Automatic
 
 # Persistent Volume enabled

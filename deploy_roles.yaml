@@ -102,6 +102,11 @@
         tags:
         - monitoring
 
+      - import_role:
+          name: logging
+        tags:
+        - logging
+
     always:
       - name: Revoke access token notifier
         debug:
