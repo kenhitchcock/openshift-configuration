@@ -22,29 +22,30 @@
             ldap-sync.yaml: |
               kind: LDAPSyncConfig
               apiVersion: v1
-              url: "{{ ad_server_url }}"
+              url: "{{ ad_sync_server_url }}"
               insecure: true
-              bindDN: "{{ ad_service_account }}"
-              bindPassword: "{{ ad_password }}"
+              bindDN: "{{ ad_sync_service_account }}"
+              bindPassword: "{{ ad_sync_password }}"
               augmentedActiveDirectory:
                   groupsQuery:
-                      baseDN: "{{ group_base_dn }}" #"OU=Open Shift,OU=Groups,DC=office,DC=local"
+                      baseDN: "{{ ad_sync_group_base_dn }}"
+                      scope: "{{ ad_sync_group_scope }}"
                       derefAliases: never
                       pageSize: 0
-                  groupUIDAttribute: dn
-                  groupNameAttributes: [ cn ]
+                  groupUIDAttribute: "{{ ad_sync_group_groupUIDAttribute }}"
+                  groupNameAttributes: [ "{{ ad_sync_group_groupNameAttributes }}" ]
                   usersQuery:
-                      baseDN: "{{ user_base_dn }}" #"ou=IT Staff,dc=office,dc=local"
-                      scope: sub
-                      filter: (objectclass=organizationalPerson)
+                      baseDN: "{{ ad_sync_user_base_dn }}"
+                      scope: "{{ ad_sync_user_scope }}"
+                      filter: "{{ ad_sync_user_filter }}"
                       derefAliases: never
                       pageSize: 0
-                  userNameAttributes: [ sAMAccountName ]
-                  groupMembershipAttributes: [ "memberOf:1.2.840.113556.1.4.1941:" ]
+                  userNameAttributes: [ "{{ ad_sync_user_userNameAttributes }}" ]
+                  groupMembershipAttributes: [ "{{ ad_sync_user_groupMembershipAttributes }}" ]
             whitelist.yaml: |
-              cn="{{ ad_group_1 }}",ou=Open Shift,ou=Groups,dc=office,dc=local
-              cn="{{ ad_group_2 }}",ou=Open Shift,ou=Groups,dc=office,dc=local
-              cn="{{ ad_group_3 }}",ou=Open Shift,ou=Groups,dc=office,dc=local
+              cn="{{ ad_sync_group_1 }}","{{ ad_sync_group_base_dn }}"
+              cn="{{ ad_sync_group_2 }}","{{ ad_sync_group_base_dn }}"
+              cn="{{ ad_sync_group_3 }}","{{ ad_sync_group_base_dn }}"
 
 
     - name: Create CronJob for LDAP sync
