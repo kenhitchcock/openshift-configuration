@@ -30,8 +30,8 @@
       - merge     
     definition:
       spec:
-        channel: '4.4'
-        installPlanApproval: Automatic
+        channel: "{{ es_operator_channel }}"  #'4.4'
+        installPlanApproval: "{{ es_operator_installPlanApproval }}" #Automatic
         name: elasticsearch-operator
         source: redhat-operators
         sourceNamespace: openshift-marketplace
@@ -69,8 +69,8 @@
       - merge     
     definition:
       spec:
-        channel: '4.4'
-        installPlanApproval: Automatic
+        channel: "{{ log_operator_channel }}" #'4.4'
+        installPlanApproval: "{{ log_operator_installPlanApproval }}" #Automatic
         name: cluster-logging
         source: redhat-operators
         sourceNamespace: openshift-marketplace
@@ -80,7 +80,7 @@
   pause:
     seconds: 30
 
-- name: Deploy ClusterLogging
+- name: Deploy ClusterLogging with persistent storage
   k8s:
     state: present
     api_version: logging.openshift.io/v1
@@ -113,10 +113,10 @@
             resources:
               limits:
                 cpu: 500m
-                memory: 8Gi
+                memory: "{{ es_node_memory }}" #8Gi
               requests:
                 cpu: 500m
-                memory: 8Gi
+                memory: "{{ es_node_memory }}" #8Gi
         visualization:
           type: "kibana"  
           kibana:
@@ -147,60 +147,128 @@
           logs:
             type: "fluentd"  
             fluentd: {}
+  when: pv_enabled
 
-- name:  Create empty ConfigMap for intermediateCA
+- name: Deploy ClusterLogging w/o persistent storage
   k8s:
     state: present
-    kind: ConfigMap
-    namespace: openshift-logging
-    name: trusted-ca
+    api_version: logging.openshift.io/v1
+    kind: ClusterLogging
+    name: "instance" 
+    namespace: "openshift-logging"
     merge_type: 
       - strategic-merge
       - merge     
     definition:
-      metadata:
-        labels:
-          config.openshift.io/inject-trusted-cabundle: 'true'
-  when: cluster_version != "4.3"   
+      spec:
+        managementState: "Managed"  
+        logStore:
+          type: "elasticsearch"  
+          elasticsearch:
+            nodeCount: "{{ es_node_count }}"
+            storage: {}
+            redundancyPolicy: "SingleRedundancy"
+            nodeSelector:
+              node-role.kubernetes.io/infra: ""
+            tolerations:
+            - effect: NoSchedule
+              key: infra
+              value: reserved
+            - effect: NoExecute
+              key: infra
+              value: reserved
+            resources:
+              limits:
+                cpu: 500m
+                memory: "{{ es_node_memory }}" #8Gi
+              requests:
+                cpu: 500m
+                memory: "{{ es_node_memory }}" #8Gi
+        visualization:
+          type: "kibana"  
+          kibana:
+            replicas: 1
+            nodeSelector:
+              node-role.kubernetes.io/infra: ""
+            tolerations:
+            - effect: NoSchedule
+              key: infra
+              value: reserved
+            - effect: NoExecute
+              key: infra
+              value: reserved
+        curation:
+          type: "curator"  
+          curator:
+            schedule: '{{ curator_cron_schedule }}'
+            nodeSelector:
+              node-role.kubernetes.io/infra: ""
+            tolerations:
+            - effect: NoSchedule
+              key: infra
+              value: reserved
+            - effect: NoExecute
+              key: infra
+              value: reserved
+        collection:
+          logs:
+            type: "fluentd"  
+            fluentd: {}
+  when: not pv_enabled
+
+#- name:  Create empty ConfigMap for intermediateCA
+#  k8s:
+#    state: present
+#    kind: ConfigMap
+#    namespace: openshift-logging
+#    name: trusted-ca
+#    merge_type: 
+#      - strategic-merge
+#      - merge     
+#    definition:
+#      metadata:
+#        labels:
+#          config.openshift.io/inject-trusted-cabundle: 'true'
+#  when: cluster_version != "4.5"   
 
 
 - name: Pause for 30 seconds for kibana deployment to be created
   pause:
     seconds: 30
 
-- name: Patch Kibana Deployment
-  k8s:
-    state: present
-    kind: Deployment
-    name: kibana
-    namespace: openshift-logging
-    merge_type: 
-      - strategic-merge
-      - merge     
-    definition:
-      spec:
-        template:
-          spec:
-            containers:
-              - name: kibana
-                volumeMounts:
-                  - name: trusted-ca
-                    readOnly: true
-                    mountPath: /etc/pki/ca-trust/extracted/pem
-              - name: kibana-proxy
-                volumeMounts:
-                  - name: trusted-ca
-                    readOnly: true
-                    mountPath: /etc/pki/ca-trust/extracted/pem
-            volumes:
-              - name: trusted-ca
-                configMap:
-                  name: trusted-ca
-                  items:
-                    - key: ca-bundle.crt
-                      path: tls-ca-bundle.pem
-                  defaultMode: 420      
-  when: cluster_version != "4.3"    
+#- name: Patch Kibana Deployment
+#  k8s:
+#    state: present
+#    kind: Deployment
+#    name: kibana
+#    namespace: openshift-logging
+#    merge_type: 
+#      - strategic-merge
+#      - merge     
+#    definition:
+#      spec:
+#        template:
+#          spec:
+#            containers:
+#              - name: kibana
+#                volumeMounts:
+#                  - name: trusted-ca
+#                    readOnly: true
+#                    mountPath: /etc/pki/ca-trust/extracted/pem
+#              - name: kibana-proxy
+#                volumeMounts:
+#                  - name: trusted-ca
+#                    readOnly: true
+#                    mountPath: /etc/pki/ca-trust/extracted/pem
+#            volumes:
+#              - name: trusted-ca
+#                configMap:
+#                  name: trusted-ca
+#                  items:
+#                    - key: ca-bundle.crt
+#                      path: tls-ca-bundle.pem
+#                  defaultMode: 420      
+#  when: cluster_version != "4.5"    
 
 - name: Setup Curator log rotation
   k8s:
