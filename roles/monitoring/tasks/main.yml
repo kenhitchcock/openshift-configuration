@@ -11,13 +11,13 @@
 - name: Create cluster monitoring ConfigMap
   k8s:
     state: present
-    name: "{{ monitoring-configmap-name }}"
+    name: "{{ monitoring_configmap_name }}"
     namespace: "{{ monitoring_namespace }}"
     api_version: v1
     kind: ConfigMap
     definition:
       data:
-        config.yaml: |
+        cluster-monitoring-config.yaml: |
           alertmanagerMain:
             nodeSelector:
               node-role.kubernetes.io/infra: ""
