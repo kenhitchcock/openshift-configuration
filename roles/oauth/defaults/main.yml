@@ -18,7 +18,7 @@ ad_sync: true
 oauth_sync_group_base_dn: "ou=groups,dc=example,dc=com"
 oauth_sync_group_scope: "sub"
 oauth_sync_group_groupUIDAttribute: "dn"
-oauth_sync_group_groupNameAttributes: "[ cn ]"
+oauth_sync_group_groupNameAttributes: "cn"
 oauth_sync_user_base_dn: "ou=users,dc=example,dc=com"
 oauth_sync_user_scope: "sub"
 oauth_sync_user_filter: "(objectclass=organizationalPerson)"
@@ -31,7 +31,7 @@ oauth_sync_group_3:
 
 oauth_ad_sync_cron_schedule: "*/10 * * * *"
 
-oath_ad_sync_image: "registry.redhat.io/openshift4/ose-cli"
+oauth_ad_sync_image: "registry.redhat.io/openshift4/ose-cli"
 
 oauth_ad_sync_name: "ldap-sync"
 oauth_ad_sync_configmap: "ldap-sync"
