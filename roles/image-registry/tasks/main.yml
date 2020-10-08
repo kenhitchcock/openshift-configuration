@@ -41,7 +41,7 @@
       kind: Config
       metadata:
         name: "{{ image_registry_file }}"
-#Need to edit so that this spec updates the existing spec in the config file
+      # Need to confirm tha this spec updates the existing spec in the config file
       spec:
         defaultRoute: "{{ image_registry_config_defaultRoute }}"
         httpSecret: "{{ image_registry_config_httpSecret }}"
@@ -58,6 +58,8 @@
             maxWaitInQueue: 0s
         rolloutStrategy: "{{ image_registry_config_rolloutStrategy }}"
         storage:
+        # Can be set to storage: "emptyDir":{}
+        # All images will be lost if you restart the registry.
           pvc:
             claim: "{{ image_registry_pvc }}"
 
