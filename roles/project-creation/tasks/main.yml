@@ -1,9 +1,9 @@
 - name: Create a project on loop based on dictionary in defaults/main.yml
-  openshift_raw:
+  k8s:
     api_version: v1
-    kind: Project
-    name: "{{ project_creation_name }}"
-    description: "{{ project_creation_desc }}"
-    display_name: "{{ project_creation_display_name }}"
+    kind: Namespace
+    name: "{{ item.key }}"
+    #description: "{{ item.value.project_creation_desc }}"
+    #display_name: "{{ item.value.project_creation_display_name }}"
     state: present
-  loop: "{{ lookup('dict', projects) }}"
+  with_dict: "{{ projects }}"

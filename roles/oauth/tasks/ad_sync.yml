@@ -97,76 +97,9 @@
                   groupMembershipAttributes: [ "{{ oauth_sync_user_groupMembershipAttributes }}" ]
       when: not oauth_ad_sync_usewhitelist
 
-    - name: "Create Service Account approver"
-      k8s:
-        state: present
-        kind: ServiceAccount
-        namespace: openshift-config
-        name: approver
 
-    - name: "Bind cluster-admin role to the approver Service Account"
-      k8s:
-        state: present
-        api_version: rbac.authorization.k8s.io/v1
-        kind: ClusterRoleBinding
-        name: cluster-admin-approver-sa-crb
-        merge_type: 
-          - strategic-merge
-          - merge     
-        definition:
-          metadata:
-            annotations:
-              rbac.authorization.kubernetes.io/autoupdate: "true"  
-          roleRef:
-            apiGroup: rbac.authorization.k8s.io
-            kind: ClusterRole
-            name: cluster-admin
-          subjects:
-          - kind: ServiceAccount
-            name: approver
-            namespace: openshift-config
 
-    - name: "Create Cluster Role for Service Account"
-      k8s:
-        state: present
-        api_version: rbac.authorization.k8s.io/v1
-        kind: ClusterRole
-        name: use-privileged-scc-role
-        merge_type: 
-          - strategic-merge
-          - merge     
-        definition:
-          rules:
-          - apiGroups:
-            - security.openshift.io
-            resourceNames:
-            - privileged
-            resources:
-            - securitycontextconstraints
-            verbs:
-            - use
-
-    - name: "Bind use-privileged-scc-role role to the approver Service Account"
-      k8s:
-        state: present
-        api_version: rbac.authorization.k8s.io/v1
-        kind: RoleBinding
-        name: use-privileged-scc-rolebinding
-        namespace: openshift-config
-        merge_type: 
-          - strategic-merge
-          - merge     
-        definition:
-          roleRef:
-            apiGroup: rbac.authorization.k8s.io
-            kind: ClusterRole
-            name: use-privileged-scc-role
-          subjects:
-          - kind: ServiceAccount
-            name: approver
-            namespace: openshift-config
-
-    - name: "Create CronJob for LDAP sync"
+    - name: Create CronJob for LDAP sync
       k8s:
         state: "{{ oauth_integration_state }}"
         kind: CronJob
@@ -214,5 +147,5 @@
                     volumes:
                       - name: "{{ oauth_ad_sync_name }}"
                         configMap:
-                          name: "{{ oauth_ad_sync_configmap }}"
+                          name: "{{ oauth_ad_sync_name }}"
                           defaultMode: 347

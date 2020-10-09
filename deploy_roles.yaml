@@ -102,6 +102,16 @@
         tags:
         - monitoring
 
+      - import_role:
+          name: logging
+        tags:
+        - logging
+
+      - import_role:
+          name: project-creation
+        tags:
+        - project-creation
+
     always:
       - name: Revoke access token notifier
         debug:

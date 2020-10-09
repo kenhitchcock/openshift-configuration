@@ -17,7 +17,7 @@
     kind: ConfigMap
     definition:
       data:
-        config.yaml: |
+        cluster-monitoring-config.yaml: |
           alertmanagerMain:
             nodeSelector:
               node-role.kubernetes.io/infra: ""
