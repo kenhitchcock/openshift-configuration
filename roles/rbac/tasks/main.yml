@@ -1,0 +1,59 @@
+---
+- name: Bind Users to Groups
+  k8s:
+    state: present
+    api_version: user.openshift.io/v1
+    name: "{{ item.value.group_name }}"
+    kind: Group
+    merge_type: 
+      - strategic-merge
+      - merge     
+    definition:
+      users:
+      - "{{ item.value.username }}"
+  with_dict: "{{ groups_and_users }}"
+
+# Take preexisting roles and assign them to groups
+- name: Bind role to group based on dictionary
+  k8s:
+    state: "{{ oauth_integration_state }}"
+    api_version: rbac.authorization.k8s.io/v1
+    kind: RoleBinding
+    name: "{{ key.add_group_name }}"
+    namespace: '{{ item.project_namespace }}' 
+    merge_type: 
+      - strategic-merge
+      - merge     
+    definition:
+      metadata:
+        annotations:
+          rbac.authorization.kubernetes.io/autoupdate: "true"
+      roleRef:
+        apiGroup: rbac.authorization.k8s.io
+        kind: ClusterRole
+        name: "{{ role_ref_name }}"
+      subjects:
+      - apiGroup: rbac.authorization.k8s.io
+        kind: Group
+        name: "{{ actual_group_name }}"
+  with_dict: "{{ project_names_and_roles }}"
+
+- name: Recursively add permissions from dict
+  k8s:
+    apiVersion: managed.openshift.io/v1alpha1
+    kind: SubjectPermission
+    metadata:
+      name: "{{ key.group_name }}"
+      namespace: "{{ item.rbac_namespace }}"
+    spec:
+      subjectKind: "{{ item.rbac_subject_kind }}"
+      subjectName: "{{ item.rbac_subject_name }}"
+      clusterPermissions:
+        - "{{ item.rbac_cluster_permissions }}"
+      permissions:
+        - 
+          clusterRoleName: "{{ item.rbac_cluster_role_name }}"
+          namespacesAllowedRegex: "{{ item.namespaces_allowed_regex }}"
+          namespacesDeniedRegex: "{{ item.namespaces_denied_regex }}"
+          allowFirst: "{{ item.allow_first }}"
+  with_dict: "{{ rbac_permissions }}"
