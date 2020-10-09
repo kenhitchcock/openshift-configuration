@@ -83,6 +83,7 @@
           requests:
             storage: "{{ image_registry_pvc_storage_size }}"
         storageClassName: "{{ image_registry_storageClass_name }}"
+  when: cluster_storage == "dynamic"
 
 - name: Create PVC w/o Dynamic Storage
   k8s:
@@ -97,20 +98,23 @@
         resources:
           requests:
             storage: "{{ image_registry_pvc_storage_size }}"
-
+  when: cluster_storage == "manual"
 
 - name: Patch spec fields inc defaultRoute and managedState
   k8s:
     state: present
     namespace: "{{ image_registry_namespace }}"
-    api_version: v1
+    api_version: imageregistry.operator.openshift.io/v1
     kind: Config
-    name: "{{ image_registry_file }}"
+    name: cluster #"{{ image_registry_file }}" 
+    merge_type:
+      - strategic-merge
+      - merge
     definition:
       # Need to confirm that this spec updates the existing spec in the config file
       spec:
         defaultRoute: "{{ image_registry_config_defaultRoute }}"
-        #httpSecret: "{{ image_registry_config_httpSecret }}"
+        httpSecret: "{{ image_registry_config_httpSecret }}"
         logging: "{{ image_registry_config_logging }}"
         managementState: "{{ image_registry_config_managementState }}"
         nodeSelector:

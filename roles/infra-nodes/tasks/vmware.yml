@@ -2,7 +2,6 @@
 
 - name: "Relabel infra nodes using list"
   k8s:
-<<<<<<< HEAD
     api_version: v1
     kind: Node
     merge_type: 
@@ -14,14 +13,12 @@
         name: "{{item}}"
         labels:
           node-role.kubernetes.io/infra: ''
-=======
     apiVersion: v1
     kind: Node
     metadata:
       name: "{{item}}"
       labels:
         node-role.kubernetes.io/infra=: ''
->>>>>>> 42c6ad4d8539ee39d9725aebe92fb58df1719b84
   with_items: "{{infra_nodes_list}}"
 
 - name: Count the number of infra machines

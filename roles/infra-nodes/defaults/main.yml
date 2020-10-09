@@ -1,10 +1,6 @@
 ---
 
-<<<<<<< .mine
-cluster_platform: "VMWare" #options are vmware and cloud
-=======
-cluster_platform: "vmware"
->>>>>>> .theirs
+cluster_platform: "vmware" #options are vmware and cloud
 
 infra_nodes_list:
   - server1
