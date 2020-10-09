@@ -1,0 +1,15 @@
+---
+
+- name: Remove files from files directory
+  file:
+    path: "{{ role_path }}/files/{{ item.name }}-{{ region }}-{{ item.az }}.yaml"
+    state: absent
+  with_items: "{{azure_machinesets}}"
+  when: cloud == "Azure"
+
+- name: Remove files from files directory
+  file:
+    path: "{{ role_path }}/files/{{ item.name }}-{{ region }}{{ item.az }}.yaml"
+    state: absent
+  with_items: "{{aws_machinesets}}"
+  when: cloud == "AWS"

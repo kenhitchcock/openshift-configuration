@@ -1,0 +1,156 @@
+---
+
+- name: Move Routers to Infra nodes
+  k8s:
+    api_version: operator.openshift.io/v1
+    state: present
+    kind: IngressController
+    name: default
+    namespace: openshift-ingress-operator
+    merge_type: 
+      - strategic-merge
+      - merge     
+    definition:
+      spec:
+        replicas: 3
+        nodePlacement:
+          nodeSelector:
+            matchLabels:
+              node-role.kubernetes.io/infra: ""
+          tolerations:
+          - effect: NoSchedule
+            key: infra
+            value: reserved
+          - effect: NoExecute
+            key: infra
+            value: reserved
+
+- name: Move Registry to Infra nodes
+  k8s:
+    api_version: imageregistry.operator.openshift.io/v1
+    state: present
+    kind: Config
+    name: cluster
+    namespace: openshift-ingress-operator
+    merge_type: 
+      - strategic-merge
+      - merge     
+    definition:
+      spec:
+        nodeSelector:
+          node-role.kubernetes.io/infra: ""
+        tolerations:
+        - effect: NoSchedule
+          key: infra
+          value: reserved
+        - effect: NoExecute
+          key: infra
+          value: reserved
+
+- name: Move Monitoring to Infra nodes
+  k8s:
+    api_version: v1
+    state: present
+    kind: ConfigMap
+    name: cluster-monitoring-config
+    namespace: openshift-monitoring
+    merge_type: 
+      - strategic-merge
+      - merge     
+    definition:
+      data:
+        config.yaml: |+
+          alertmanagerMain:
+            volumeClaimTemplate:
+              spec:
+                storageClassName: {{ storage_class }}
+                volumeMode: Filesystem 
+                resources:
+                  requests:
+                    storage: {{ prom_pv_size }}
+            nodeSelector:
+              node-role.kubernetes.io/infra: ""
+            tolerations:
+            - key: infra
+              value: reserved
+              effect: NoSchedule
+            - key: infra
+              value: reserved
+              effect: NoExecute
+          prometheusK8s:
+            volumeClaimTemplate:
+              spec:
+                storageClassName: {{ storage_class }}
+                volumeMode: Filesystem
+                resources:
+                  requests:
+                    storage: {{ prom_pv_size }}
+            nodeSelector:
+              node-role.kubernetes.io/infra: ""
+            tolerations:
+            - key: infra
+              value: reserved
+              effect: NoSchedule
+            - key: infra
+              value: reserved
+              effect: NoExecute
+          prometheusOperator:
+            nodeSelector:
+              node-role.kubernetes.io/infra: ""
+            tolerations:
+            - key: infra
+              value: reserved
+              effect: NoSchedule
+            - key: infra
+              value: reserved
+              effect: NoExecute
+          grafana:
+            nodeSelector:
+              node-role.kubernetes.io/infra: ""
+            tolerations:
+            - key: infra
+              value: reserved
+              effect: NoSchedule
+            - key: infra
+              value: reserved
+              effect: NoExecute
+          k8sPrometheusAdapter:
+            nodeSelector:
+              node-role.kubernetes.io/infra: ""
+            tolerations:
+            - key: infra
+              value: reserved
+              effect: NoSchedule
+            - key: infra
+              value: reserved
+              effect: NoExecute
+          kubeStateMetrics:
+            nodeSelector:
+              node-role.kubernetes.io/infra: ""
+            tolerations:
+            - key: infra
+              value: reserved
+              effect: NoSchedule
+            - key: infra
+              value: reserved
+              effect: NoExecute
+          telemeterClient:
+            nodeSelector:
+              node-role.kubernetes.io/infra: ""
+            tolerations:
+            - key: infra
+              value: reserved
+              effect: NoSchedule
+            - key: infra
+              value: reserved
+              effect: NoExecute
+          openshiftStateMetrics:
+            nodeSelector:
+              node-role.kubernetes.io/infra: ""
+            tolerations:
+            - key: infra
+              value: reserved
+              effect: NoSchedule
+            - key: infra
+              value: reserved
+              effect: NoExecute

@@ -1,0 +1,25 @@
+# This is for binding a role to a group based on a dictionary
+project_names_and_roles:
+  add_group_name: developer-group-rb
+    project_namespace: developer-project-1
+    role_ref_name: admin
+    actual_group_name: "{{ groups_and_users.developer.group_name }}"
+    # Change developer on the line above, to whatever item in the groups_and_users dict
+  add_group_name: cluster-admin-cluster-admin-crb  
+    project_namespace: openshift-config
+    role_ref_name: cluster-admin
+    actual_group_name: "{{ groups_and_users.cluster_admin.group_name }}"
+    # Change cluster_admin on the line above, to whatever item in the groups_and_users dict
+
+# This is for adding permissions to a role  
+rbac_permissions:
+  group_name: dedicated-admins
+    rbac_namespace: openshift-rbac-permissions
+    cluster_role_name: dedicated-admins-project
+    rbac_subject_kind: Group
+    rbac_subject_name: dedicated-admins
+    rbac_cluster_permissions: dedicated-admins-cluster
+    rbac_cluster_role_name: dedicated-admins-project
+    namespaces_allowed_regex: ".*"
+    namespaces_denied_regex: "(^kube-.*|^openshift.*|^ops-health-monitoring$|^management-infra$|^default$|^logging$|^sre-app-check$)"
+    allow_first: true

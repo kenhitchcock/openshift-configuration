@@ -22,6 +22,7 @@ kube_host:
 ########################### Cluster details ###############################
 
 local_facts_clustername: "cluster"
+cluster_platform: "VMWare"
 
 ########################### CLIENT SPECIFIC ###########################
 # Client name
