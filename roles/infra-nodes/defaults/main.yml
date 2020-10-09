@@ -1,0 +1,8 @@
+---
+
+cluster_platform: "VMWare"
+
+infra_nodes_list:
+  - server1
+  - server2
+  - server3

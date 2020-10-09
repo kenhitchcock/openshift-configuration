@@ -1,0 +1,117 @@
+---
+
+- name: Set Machine Healthchecker for infra Azure
+  k8s:
+    api_version: machine.openshift.io/v1beta1
+    state: present
+    merge_type: 
+      - strategic-merge
+      - merge
+    kind: MachineHealthCheck
+    name: '{{ cluster_name }}-{{ item.name }}-{{ region }}{{ item.az }}'   
+    namespace: openshift-machine-api
+    definition:
+      spec:
+        selector:
+          matchLabels:
+            machine.openshift.io/cluster-api-cluster: '{{ cluster_name }}'
+            machine.openshift.io/cluster-api-machine-role: infra 
+            machine.openshift.io/cluster-api-machine-type: infra 
+            machine.openshift.io/cluster-api-machineset: '{{ cluster_name }}-{{ item.name }}-{{ region }}{{ item.az }}' 
+        unhealthyConditions:
+        - type:    "Ready"
+          timeout: "300s"
+          status: "False"
+        - type:    "Ready"
+          timeout: "300s"
+          status: "Unknown"
+        maxUnhealthy: "40%"
+  with_items: "{{azure_machinesets}}"
+  when: cloud == "Azure"
+
+- name: Set Machine Healthchecker for worker Azure
+  k8s:
+    api_version: machine.openshift.io/v1beta1
+    state: present
+    merge_type: 
+      - strategic-merge
+      - merge
+    kind: MachineHealthCheck
+    name: '{{ cluster_name }}-worker-{{ region }}{{ item.az }}'   
+    namespace: openshift-machine-api
+    definition:
+      spec:
+        selector:
+          matchLabels:
+            machine.openshift.io/cluster-api-cluster: '{{ cluster_name }}'
+            machine.openshift.io/cluster-api-machine-role: worker 
+            machine.openshift.io/cluster-api-machine-type: worker 
+            machine.openshift.io/cluster-api-machineset: '{{ cluster_name }}-worker-{{ region }}{{ item.az }}' 
+        unhealthyConditions:
+        - type:    "Ready"
+          timeout: "300s"
+          status: "False"
+        - type:    "Ready"
+          timeout: "300s"
+          status: "Unknown"
+        maxUnhealthy: "40%" 
+  with_items: "{{azure_machinesets}}"
+  when: cloud == "Azure"
+
+- name: Set Machine Healthchecker for infra AWS
+  k8s:
+    api_version: machine.openshift.io/v1beta1
+    state: present
+    merge_type: 
+      - strategic-merge
+      - merge
+    kind: MachineHealthCheck
+    name: '{{ cluster_name }}-{{ item.name }}-{{ region }}{{ item.az }}'   
+    namespace: openshift-machine-api
+    definition:
+      spec:
+        selector:
+          matchLabels:
+            machine.openshift.io/cluster-api-cluster: '{{ cluster_name }}'
+            machine.openshift.io/cluster-api-machine-role: infra 
+            machine.openshift.io/cluster-api-machine-type: infra 
+            machine.openshift.io/cluster-api-machineset: '{{ cluster_name }}-{{ item.name }}-{{ region }}{{ item.az }}' 
+        unhealthyConditions:
+        - type:    "Ready"
+          timeout: "300s"
+          status: "False"
+        - type:    "Ready"
+          timeout: "300s"
+          status: "Unknown"
+        maxUnhealthy: "40%"
+  with_items: "{{aws_machinesets}}"
+  when: cloud == "AWS"
+
+- name: Set Machine Healthchecker for worker AWS
+  k8s:
+    api_version: machine.openshift.io/v1beta1
+    state: present
+    merge_type: 
+      - strategic-merge
+      - merge
+    kind: MachineHealthCheck
+    name: '{{ cluster_name }}-worker-{{ region }}{{ item.az }}'   
+    namespace: openshift-machine-api
+    definition:
+      spec:
+        selector:
+          matchLabels:
+            machine.openshift.io/cluster-api-cluster: '{{ cluster_name }}'
+            machine.openshift.io/cluster-api-machine-role: worker 
+            machine.openshift.io/cluster-api-machine-type: worker 
+            machine.openshift.io/cluster-api-machineset: '{{ cluster_name }}-worker-{{ region }}{{ item.az }}' 
+        unhealthyConditions:
+        - type:    "Ready"
+          timeout: "300s"
+          status: "False"
+        - type:    "Ready"
+          timeout: "300s"
+          status: "Unknown"
+        maxUnhealthy: "40%" 
+  with_items: "{{aws_machinesets}}"
+  when: cloud == "AWS"

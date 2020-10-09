@@ -1,0 +1,52 @@
+---
+
+- name: "Relabel infra nodes using list"
+  k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Node
+      metadata:
+        name: "{{item}}"
+        labels:
+          node-role.kubernetes.io/infra=: ''
+  with_items: "{{infra_nodes_list}}"
+
+- name: Count the number of infra machines
+  shell: KUBECONFIG='{{ kube_config }}' oc get machines -l machine.openshift.io/cluster-api-machine-role=infra -n openshift-machine-api | grep -v NAME | wc -l | xargs echo -n
+  register: result
+
+- name: Wait for infra nodes to become ready
+  shell: KUBECONFIG={{ kube_config }} oc get nodes -l node-role.kubernetes.io/infra | egrep "\sReady" | wc -l | xargs echo -n
+  register: count
+  until: count.stdout.find("{{ item }}") != -1
+  retries: 300
+  delay: 10
+  with_items: '{{ result.stdout }}'
+
+- name: Create Machine Config Pool for INFRA nodes
+  k8s:
+    api_version: machineconfiguration.openshift.io/v1
+    state: present
+    kind: MachineConfigPool
+    merge_type: 
+      - strategic-merge
+      - merge     
+    definition:
+      metadata:
+        name: infra
+      spec:
+        machineConfigSelector:
+          matchExpressions:
+            - {key: machineconfiguration.openshift.io/role, operator: In, values: [worker,infra]}
+        nodeSelector:
+          matchLabels:
+            node-role.kubernetes.io/infra: ""
+
+- name: Wait for infra nodes to become ready
+  shell: KUBECONFIG={{ kube_config }} oc get mcp infra -o=jsonpath='{.status.readyMachineCount}{"\n"}'
+  register: count
+  until: count.stdout.find("{{ item }}") != -1
+  retries: 300
+  delay: 10
+  with_items: '{{ result.stdout }}'
