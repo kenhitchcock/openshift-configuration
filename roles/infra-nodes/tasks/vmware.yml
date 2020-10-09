@@ -2,18 +2,16 @@
 
 - name: "Relabel infra nodes using list"
   k8s:
-    state: present
-    definition:
-      apiVersion: v1
-      kind: Node
-      metadata:
-        name: "{{item}}"
-        labels:
-          node-role.kubernetes.io/infra=: ''
+    apiVersion: v1
+    kind: Node
+    metadata:
+      name: "{{item}}"
+      labels:
+        node-role.kubernetes.io/infra=: ''
   with_items: "{{infra_nodes_list}}"
 
 - name: Count the number of infra machines
-  shell: KUBECONFIG='{{ kube_config }}' oc get machines -l machine.openshift.io/cluster-api-machine-role=infra -n openshift-machine-api | grep -v NAME | wc -l | xargs echo -n
+  shell: KUBECONFIG='{{ kube_config }}' oc get nodes -l node-role.kubernetes.io/infra | grep -v NAME | wc -l | xargs echo -n
   register: result
 
 - name: Wait for infra nodes to become ready

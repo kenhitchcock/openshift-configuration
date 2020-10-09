@@ -4,19 +4,20 @@
   block:
     - name: "Create infranodes."
       import_tasks: cloud.yml
-  when: cloud == "Azure" or cloud == "AWS"
-
+  when: cluster_platform == "cloud"
+    
 - name: "VMWare based deployment"
   block:
     - name: "Create infranodes on vmware."
       import_tasks: vmware.yml
-  when: platform == "VMWare"
+  when: cluster_platform == "vmware"
 
 - name: "Move resources to new infra nodes."
   import_tasks: moveresources.yml
 
 - name: "Set healthchecks in place."
   import_tasks: healthchecks.yml
+  when: cluster_platform == "cloud"
 
 - name: "Cleanup any files created."
   import_tasks: cleanup.yml
