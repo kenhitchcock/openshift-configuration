@@ -166,7 +166,6 @@
           type: "elasticsearch"  
           elasticsearch:
             nodeCount: "{{ es_node_count }}"
-            storage: {}
             redundancyPolicy: "SingleRedundancy"
             nodeSelector:
               node-role.kubernetes.io/infra: ""

@@ -2,6 +2,17 @@
 
 - name: "Relabel infra nodes using list"
   k8s:
+    api_version: v1
+    kind: Node
+    merge_type: 
+      - strategic-merge
+      - merge 
+    state: present
+    definition:
+      metadata:
+        name: "{{item}}"
+        labels:
+          node-role.kubernetes.io/infra: ''
     apiVersion: v1
     kind: Node
     metadata:

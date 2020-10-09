@@ -144,6 +144,11 @@
                             mountPath: /ldap-sync
                           - name: ca-config-map
                             mountPath: /cert
+
+                          - name: ldap-sync
+                            mountPath: /ldap-sync
+                          - name: ca-config-map
+                            mountPath: /cert
                         terminationMessagePath: /dev/termination-log
                         terminationMessagePolicy: File
                         imagePullPolicy: Always

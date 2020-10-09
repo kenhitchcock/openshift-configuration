@@ -11,6 +11,7 @@
       provisioner: "{{ image_registry_def_provisioner }}"
       reclaimPolicy: "{{ image_registry_def_reclaimPolicy }}"
       volumeBindingMode: "{{ image_registry_def_volumeBindingMode }}"
+  when: cluster_storage == "dynamic"
 
 # As this StorageClass is maintained by an Operator we cannot remove it, 
 # we can however switch the storageclass.kubernetes.io/is-default-class key to false.
@@ -28,8 +29,9 @@
       metadata:
         annotations:
           storageclass.kubernetes.io/is-default-class: 'false'
+  when: cluster_storage == "dynamic"
 
-- name: Create PV
+- name: Create PV with Dynamic Storage
   k8s:
     api_version: v1
     kind: PersistentVolume
@@ -46,8 +48,28 @@
           server: "{{ image_registry_nfs_server }}"
         persistentVolumeReclaimPolicy: Retain
         storageClassName: "{{ image_registry_storageClass_name }}"
+  when: cluster_storage == "dynamic"
 
-- name: Create PVC
+- name: Create PV w/o Dynamic Storage
+  k8s:
+    api_version: v1
+    kind: PersistentVolume
+    namespace: "{{ image_registry_namespace }}"
+    name: "{{ image_registry_pv }}"
+    definition:
+      spec:
+        accessModes:
+          - ReadWriteMany
+        capacity:
+            storage: "{{ image_registry_pv_storage_size }}"
+        nfs:
+          path: "{{ image_registry_nfs_path }}"
+          server: "{{ image_registry_nfs_server }}"
+        persistentVolumeReclaimPolicy: Retain
+        volumeMode: Filesystem
+  when: cluster_storage == "manual"
+
+- name: Create PVC with Dynamic Storage
   k8s:
     api_version: v1
     kind: "PersistentVolumeClaim"
@@ -61,15 +83,33 @@
           requests:
             storage: "{{ image_registry_pvc_storage_size }}"
         storageClassName: "{{ image_registry_storageClass_name }}"
-        volumeMode: Filesystem
+  when: cluster_storage == "dynamic"
+
+- name: Create PVC w/o Dynamic Storage
+  k8s:
+    api_version: v1
+    kind: "PersistentVolumeClaim"
+    namespace: "{{ image_registry_namespace }}"
+    name: "{{ image_registry_pvc }}"
+    definition:
+      spec:
+        accessModes:
+          - ReadWriteMany
+        resources:
+          requests:
+            storage: "{{ image_registry_pvc_storage_size }}"
+  when: cluster_storage == "manual"
 
 - name: Patch spec fields inc defaultRoute and managedState
   k8s:
     state: present
     namespace: "{{ image_registry_namespace }}"
-    api_version: v1
+    api_version: imageregistry.operator.openshift.io/v1
     kind: Config
-    name: "{{ image_registry_file }}"
+    name: cluster #"{{ image_registry_file }}" 
+    merge_type:
+      - strategic-merge
+      - merge
     definition:
       # Need to confirm that this spec updates the existing spec in the config file
       spec:
@@ -93,17 +133,17 @@
           pvc:
             claim: "{{ image_registry_pvc }}"
 
-- name: Create image-registry-private-configuration-user secret
-  k8s:
-    state: present
-    api_version: v1
-    kind: Secret
-    namespace: "{{ image_registry_namespace }}"-config
-    name: image-registry-private-configuration-user
-    merge_type: 
-      - strategic-merge
-      - merge     
-    definition:
-      type: Opaque
-      data:
-        image-registry-private-configuration-user: "{{ lookup('file', role_path + '/files/imgregkey') | b64encode }}"
+#- name: Create image-registry-private-configuration-user secret
+#  k8s:
+#    state: present
+#    api_version: v1
+#    kind: Secret
+#    namespace: "{{ image_registry_namespace }}-config"
+#    name: image-registry-private-configuration-user
+#    merge_type: 
+#      - strategic-merge
+#      - merge     
+#    definition:
+#      type: Opaque
+#      data:
+#        image-registry-private-configuration-user: "{{ lookup('file', role_path + '/files/imgregkey') | b64encode }}"  
