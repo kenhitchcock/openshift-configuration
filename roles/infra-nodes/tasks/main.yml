@@ -4,8 +4,6 @@
   block:
     - name: "Create infranodes."
       import_tasks: cloud.yml
-  when: cluster_platform == "cloud"
-
 - name: "VMWare based deployment"
   block:
     - name: "Create infranodes on vmware."
