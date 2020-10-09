@@ -23,7 +23,8 @@
               kind: LDAPSyncConfig
               apiVersion: v1
               url: "{{ oauth_ldap_url }}"
-              insecure: true
+              insecure: false
+              ca: /cert/ca.crt
               bindDN: "{{ oauth_ldap_bindDN }}"
               bindPassword: "{{ oauth_ldap_bindpassword }}"
               augmentedActiveDirectory:
@@ -76,7 +77,8 @@
               kind: LDAPSyncConfig
               apiVersion: v1
               url: "{{ oauth_ldap_url }}"
-              insecure: true
+              insecure: false
+              ca: /cert/ca.crt
               bindDN: "{{ oauth_ldap_bindDN }}"
               bindPassword: "{{ oauth_ldap_bindpassword }}"
               augmentedActiveDirectory:
@@ -138,8 +140,15 @@
                           - /"{{ oauth_ad_sync_name }}"/ldap-sync.sh
                         resources: {}
                         volumeMounts:
+<<<<<<< HEAD
                           - name: "{{ oauth_ad_sync_name }}"
                             mountPath: /"{{ oauth_ad_sync_name }}"
+=======
+                          - name: ldap-sync
+                            mountPath: /ldap-sync
+                          - name: ca-config-map
+                            mountPath: /cert
+>>>>>>> added https connection to ldap-sync job, new mount to cert configmap from cronJob
                         terminationMessagePath: /dev/termination-log
                         terminationMessagePolicy: File
                         imagePullPolicy: Always
@@ -148,4 +157,8 @@
                       - name: "{{ oauth_ad_sync_name }}"
                         configMap:
                           name: "{{ oauth_ad_sync_name }}"
+                          defaultMode: 347
+                      - name: ca-config-map
+                        configMap:
+                          name: ca-config-map
                           defaultMode: 347
