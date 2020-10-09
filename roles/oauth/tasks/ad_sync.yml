@@ -140,15 +140,13 @@
                           - /"{{ oauth_ad_sync_name }}"/ldap-sync.sh
                         resources: {}
                         volumeMounts:
-<<<<<<< HEAD
                           - name: "{{ oauth_ad_sync_name }}"
                             mountPath: /"{{ oauth_ad_sync_name }}"
-=======
+
                           - name: ldap-sync
                             mountPath: /ldap-sync
                           - name: ca-config-map
                             mountPath: /cert
->>>>>>> added https connection to ldap-sync job, new mount to cert configmap from cronJob
                         terminationMessagePath: /dev/termination-log
                         terminationMessagePolicy: File
                         imagePullPolicy: Always

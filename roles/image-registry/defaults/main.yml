@@ -1,4 +1,6 @@
 ---
+cluster_storage: "manual"
+
 image_registry_namespace: openshift-image-registry
 image_registry_file: imageRegistryClusterConfig
 

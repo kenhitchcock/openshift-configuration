@@ -1,6 +1,6 @@
 ---
 
-cluster_platform: "VMWare"
+cluster_platform: "vmware"
 
 infra_nodes_list:
   - server1
